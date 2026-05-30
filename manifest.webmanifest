@@ -1,0 +1,17 @@
+{
+  "name": "体重コーチ",
+  "short_name": "体重コーチ",
+  "description": "実測体重ではなくトレンド体重を主役にした体重管理PWA",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#eef5f1",
+  "theme_color": "#eef5f1",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

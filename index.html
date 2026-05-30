@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f4f7f5">
+  <title>体重コーチ</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css?v=21">
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Trend-first weight coach</p>
+        <h1>体重コーチ</h1>
+      </div>
+      <div class="status-pill" id="saveStatus">端末内保存</div>
+    </header>
+
+    <main>
+      <section class="view active" id="view-today" aria-label="記録">
+        <div class="hero-panel game-panel">
+          <div>
+            <p class="panel-label">TREND WEIGHT</p>
+            <div class="hero-number"><span id="trendWeight">--.-</span><span>kg</span></div>
+            <p class="muted" id="trendCaption">朝の体重を入力すると、ぶれをならして表示します。</p>
+          </div>
+          <div class="ring" aria-label="目標進捗">
+            <svg viewBox="0 0 120 120" role="img">
+              <circle class="ring-bg" cx="60" cy="60" r="48"></circle>
+              <circle class="ring-progress" id="progressRing" cx="60" cy="60" r="48"></circle>
+            </svg>
+            <div><strong id="progressPercent">0%</strong><span>進捗</span></div>
+          </div>
+        </div>
+
+        <div class="game-stats">
+          <article>
+            <span>連続記録</span>
+            <strong id="streakDays">0日</strong>
+          </article>
+          <article>
+            <span>今月記録</span>
+            <strong id="monthEntries">0回</strong>
+          </article>
+          <article>
+            <span>総合評価</span>
+            <strong class="rank-badge rank-d" id="dailyRank">D</strong>
+          </article>
+        </div>
+
+        <section class="calendar-panel" aria-labelledby="calendarTitle">
+          <div class="calendar-header">
+            <button class="icon-button" id="prevMonth" type="button" aria-label="前の月">‹</button>
+            <h2 id="calendarTitle">----年--月</h2>
+            <button class="icon-button" id="nextMonth" type="button" aria-label="次の月">›</button>
+          </div>
+          <div class="calendar-weekdays" aria-hidden="true">
+            <span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+        </section>
+
+        <form class="entry-form" id="weightForm">
+          <div class="form-row">
+            <label for="weightInput">実測体重</label>
+            <div class="input-unit">
+              <input id="weightInput" type="number" min="30" max="250" step="0.1" inputmode="decimal" placeholder="78.0" required>
+              <span>kg</span>
+            </div>
+          </div>
+        </form>
+
+        <div class="metric-grid">
+          <article class="metric-card">
+            <span>実測体重</span>
+            <strong id="actualWeight">--.- kg</strong>
+          </article>
+          <article class="metric-card">
+            <span>目標まで</span>
+            <strong id="remainingWeight">--.- kg</strong>
+          </article>
+          <article class="metric-card">
+            <span>BMI</span>
+            <strong id="bmiValue">--.-</strong>
+          </article>
+          <article class="metric-card">
+            <span>到達予測</span>
+            <strong id="forecastDate">--</strong>
+          </article>
+        </div>
+
+        <section class="section-block">
+          <div class="section-head">
+            <h2 id="recordTitle">運動実績</h2>
+          </div>
+          <div class="segmented-control" id="exerciseSegment" role="group" aria-label="運動実績">
+            <button type="button" data-exercise="false">休養</button>
+            <button type="button" data-exercise="true">実施</button>
+          </div>
+          <div class="generated-menu" id="recordGeneratedMenu"></div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-head">
+            <h2>食事チェック</h2>
+          </div>
+          <div class="check-grid" id="dailyChecks">
+            <label><input type="checkbox" data-check="protein100"> たんぱく質100g</label>
+            <label><input type="checkbox" data-check="vegetables350"> 野菜350g/日</label>
+            <label><input type="checkbox" data-check="carbPortion"> 米・麺・パン150g/食</label>
+            <label><input type="checkbox" data-check="noFried"> 揚げ物なし</label>
+            <label><input type="checkbox" data-check="snackUnder200"> 間食200kcal以内</label>
+            <label><input type="checkbox" data-check="noJuiceAlcohol"> ジュース・酒0ml</label>
+            <label><input type="checkbox" data-check="noLateSnack"> 21時以降の食事なし</label>
+            <label><input type="checkbox" data-check="noSweets"> お菓子抜き</label>
+            <label><input type="checkbox" data-check="water1500"> 水・お茶1.5L以上</label>
+          </div>
+          <textarea id="dailyNote" rows="3" placeholder="体調、睡眠、外食など"></textarea>
+        </section>
+
+        <div class="record-actions">
+          <button class="primary-button" id="saveRecord" type="button">保存</button>
+          <button class="ghost-button" id="deleteRecord" type="button">削除</button>
+        </div>
+      </section>
+
+      <section class="view" id="view-trend" aria-labelledby="trendTitle">
+        <div class="section-head">
+          <h2 id="trendTitle">推移</h2>
+          <p>薄い点が実測、太い線がトレンド体重です。</p>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="weightChart" width="720" height="420"></canvas>
+        </div>
+        <div class="metric-grid">
+          <article class="metric-card">
+            <span>7日平均</span>
+            <strong id="avg7">--.- kg</strong>
+          </article>
+          <article class="metric-card">
+            <span>週平均</span>
+            <strong id="weekAvg">--.- kg</strong>
+          </article>
+          <article class="metric-card">
+            <span>現在ペース</span>
+            <strong id="currentPace">-- kg/週</strong>
+          </article>
+          <article class="metric-card">
+            <span>必要ペース</span>
+            <strong id="requiredPace">-- kg/週</strong>
+          </article>
+        </div>
+        <div class="notice" id="paceNotice">目標と期限を設定すると必要ペースを表示します。</div>
+        <section class="weekly-summary" aria-labelledby="weeklySummaryTitle">
+          <div>
+            <p class="panel-label">WEEKLY RANK</p>
+            <h2 id="weeklySummaryTitle">週間の総合評価</h2>
+            <p id="weeklyRange">----/--/-- - ----/--/--</p>
+          </div>
+          <strong class="rank-badge rank-d" id="weeklyRank">D</strong>
+          <p id="weeklyComment">記録が増えると週間評価を表示します。</p>
+        </section>
+      </section>
+
+      <section class="view" id="view-exercise" aria-labelledby="exerciseTitle">
+        <div class="section-head">
+          <h2 id="exerciseTitle">運動</h2>
+          <p>実施する種目と強度からメニューを作ります。</p>
+        </div>
+        <div class="exercise-planner" id="exercisePlanner">
+          <article class="exercise-card">
+            <div>
+              <h3>ランニング</h3>
+              <label class="switch-row"><input type="checkbox" data-plan-enabled="running"> 実施</label>
+            </div>
+            <div class="level-control" role="group" aria-label="ランニング強度">
+              <button type="button" data-plan-level="running:soft">ソフト</button>
+              <button type="button" data-plan-level="running:normal">ノーマル</button>
+              <button type="button" data-plan-level="running:hard">ハード</button>
+            </div>
+            <dl class="level-legend" aria-label="ランニング強度の目安">
+              <div><dt>ソフト</dt><dd>5km</dd></div>
+              <div><dt>ノーマル</dt><dd>10km</dd></div>
+              <div><dt>ハード</dt><dd>20km</dd></div>
+            </dl>
+          </article>
+          <article class="exercise-card">
+            <div>
+              <h3>筋トレ</h3>
+              <label class="switch-row"><input type="checkbox" data-plan-enabled="strength"> 実施</label>
+            </div>
+            <div class="level-control" role="group" aria-label="筋トレ強度">
+              <button type="button" data-plan-level="strength:soft">ソフト</button>
+              <button type="button" data-plan-level="strength:normal">ノーマル</button>
+              <button type="button" data-plan-level="strength:hard">ハード</button>
+            </div>
+            <dl class="level-legend" aria-label="筋トレ強度の目安">
+              <div><dt>ソフト</dt><dd>15分目安</dd></div>
+              <div><dt>ノーマル</dt><dd>30分</dd></div>
+              <div><dt>ハード</dt><dd>1時間</dd></div>
+            </dl>
+          </article>
+          <article class="exercise-card">
+            <div>
+              <h3>サンドバッグ</h3>
+              <label class="switch-row"><input type="checkbox" data-plan-enabled="bag"> 実施</label>
+            </div>
+            <div class="level-control" role="group" aria-label="サンドバッグ強度">
+              <button type="button" data-plan-level="bag:soft">ソフト</button>
+              <button type="button" data-plan-level="bag:normal">ノーマル</button>
+              <button type="button" data-plan-level="bag:hard">ハード</button>
+            </div>
+            <dl class="level-legend" aria-label="サンドバッグ強度の目安">
+              <div><dt>ソフト</dt><dd>20分</dd></div>
+              <div><dt>ノーマル</dt><dd>40分</dd></div>
+              <div><dt>ハード</dt><dd>1時間</dd></div>
+            </dl>
+          </article>
+        </div>
+        <button class="primary-button full-button" id="generateWorkout" type="button">最適メニューの自動生成</button>
+        <div class="generated-menu" id="exerciseGeneratedMenu"></div>
+      </section>
+
+      <section class="view" id="view-settings" aria-labelledby="settingsTitle">
+        <div class="section-head">
+          <h2 id="settingsTitle">設定</h2>
+          <p>目標はいつでも変えられます。</p>
+        </div>
+        <form class="entry-form stacked" id="settingsForm">
+          <div class="form-row">
+            <label for="heightCm">身長</label>
+            <div class="input-unit">
+              <input id="heightCm" type="number" min="100" max="230" step="0.1" inputmode="decimal" required>
+              <span>cm</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="startWeight">開始体重</label>
+            <div class="input-unit">
+              <input id="startWeight" type="number" min="30" max="250" step="0.1" inputmode="decimal" required>
+              <span>kg</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="goalWeight">目標体重</label>
+            <div class="input-unit">
+              <input id="goalWeight" type="number" min="30" max="250" step="0.1" inputmode="decimal" required>
+              <span>kg</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="goalDate">期限</label>
+            <input id="goalDate" type="date" required>
+          </div>
+          <button class="primary-button" type="submit">設定を保存</button>
+        </form>
+
+        <div class="metric-grid">
+          <article class="metric-card">
+            <span>BMI25相当</span>
+            <strong id="bmi25Weight">--.- kg</strong>
+          </article>
+          <article class="metric-card">
+            <span>BMI22相当</span>
+            <strong id="bmi22Weight">--.- kg</strong>
+          </article>
+        </div>
+
+        <div class="settings-actions">
+          <button class="danger-button" id="resetData" type="button">全データ削除</button>
+        </div>
+      </section>
+    </main>
+
+    <nav class="tabbar" aria-label="メインナビゲーション">
+      <button class="tab active" data-view="today" type="button">記録</button>
+      <button class="tab" data-view="exercise" type="button">運動</button>
+      <button class="tab" data-view="trend" type="button">推移</button>
+      <button class="tab" data-view="settings" type="button">設定</button>
+    </nav>
+  </div>
+  <div class="result-modal" id="resultModal" aria-hidden="true">
+    <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
+    <div class="gloom-layer" id="gloomLayer" aria-hidden="true"></div>
+    <div class="result-dialog" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+      <p class="panel-label">DAILY RESULT</p>
+      <strong class="rank-badge rank-d" id="resultRank">D</strong>
+      <h2 id="resultTitle">記録完了</h2>
+      <p id="resultMessage">今日の積み上げを保存しました。</p>
+      <button class="primary-button" id="closeResult" type="button">OK</button>
+    </div>
+  </div>
+  <script src="./app.js?v=21"></script>
+</body>
+</html>
