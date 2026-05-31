@@ -700,6 +700,294 @@ input:focus, select:focus, textarea:focus {
 
 .check-grid input { width: 18px; height: 18px; }
 
+.check-grid label {
+  position: relative;
+  overflow: hidden;
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.check-grid label.checked {
+  border-color: rgba(255, 184, 68, 0.72);
+  background: linear-gradient(145deg, rgba(78, 30, 19, 0.92), rgba(17, 27, 24, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 14px rgba(255, 112, 38, 0.22);
+}
+
+.check-grid label.checked::after {
+  content: "";
+  position: absolute;
+  inset: auto 8px -10px auto;
+  width: 22px;
+  height: 30px;
+  border-radius: 50% 50% 45% 45%;
+  background:
+    radial-gradient(circle at 50% 74%, #fff7b0 0 12%, #ffb338 13% 34%, transparent 35%),
+    radial-gradient(circle at 50% 60%, #ff6b1f 0 42%, transparent 43%);
+  filter: blur(0.2px);
+  opacity: 0.78;
+  animation: small-flame 720ms ease-in-out infinite alternate;
+}
+
+.fat-burner {
+  display: grid;
+  grid-template-columns: 124px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 92px;
+  margin: 4px 0 10px;
+  padding: 10px 12px;
+  border: 2px solid rgba(85, 55, 48, 0.9);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(26, 18, 26, 0.96), rgba(11, 18, 16, 0.96)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 8px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+
+.burn-summary .fat-burner {
+  margin: 0;
+}
+
+.fat-burner p {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+  min-width: 0;
+}
+
+.runner-core {
+  position: relative;
+  width: 116px;
+  height: 104px;
+}
+
+.runner-figure {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* absolute (view-box) origins so every joint pivots on a real coordinate */
+.runner-figure * {
+  transform-box: view-box;
+}
+
+/* --- limb strokes --- */
+/* Paint (stroke/fill) is set as inline attributes in the SVG so the gradient
+   fragment resolves against the document, not this external stylesheet.
+   Each limb is a bent polyline (hip-knee-ankle-toe / shoulder-elbow-hand). */
+.limb {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.limb.leg { stroke-width: 10; }
+.limb.arm { stroke-width: 8; }
+
+/* heat tints the whole runner from green to fire, smoothly */
+.g-top { stop-color: #36d98f; transition: stop-color 450ms ease; }
+.g-bot { stop-color: #0e7e57; transition: stop-color 450ms ease; }
+.fat-burner.heat-1 .g-top { stop-color: #59e07a; }
+.fat-burner.heat-1 .g-bot { stop-color: #1c8a46; }
+.fat-burner.heat-2 .g-top { stop-color: #ffd166; }
+.fat-burner.heat-2 .g-bot { stop-color: #ef8a2a; }
+.fat-burner.heat-3 .g-top { stop-color: #ffc44d; }
+.fat-burner.heat-3 .g-bot { stop-color: #ff6f23; }
+.fat-burner.heat-4 .g-top { stop-color: #ffd96b; }
+.fat-burner.heat-4 .g-bot { stop-color: #ff4d12; }
+
+/* the far-side limbs recede for depth: keep the heat gradient but darken,
+   so the near/far limbs read as two tones instead of merging into a blob */
+.limbs-far { filter: brightness(0.44); }
+
+/* --- core motion --- */
+.runner-body { animation: body-bob 1080ms ease-in-out infinite; }
+
+.runner-shadow {
+  fill: rgba(0,0,0,0.5);
+  filter: blur(1px);
+  transform-origin: 84px 99px;
+  animation: runner-shadow 1080ms ease-in-out infinite;
+}
+
+/* --- run cycle: a 3-pose sprite (contact A -> pass -> contact B -> pass) ---
+   The two contact frames hold opposite, contralateral strides; the pass frame
+   carries the legs through under the body. Frames hard-switch (steps) so the
+   gait reads crisply at any tempo. Far + near halves of each frame stay in sync. */
+.frame-a,
+.frame-p,
+.frame-b { opacity: 0; }
+.frame-a { animation: show-a 1080ms steps(1, end) infinite; }
+.frame-p { animation: show-p 1080ms steps(1, end) infinite; }
+.frame-b { animation: show-b 1080ms steps(1, end) infinite; }
+
+/* --- burning trail --- */
+.flame {
+  opacity: 0;
+  transition: opacity 320ms ease;
+  animation: flame-flicker 560ms ease-in-out infinite alternate;
+}
+.flame.f1 { transform-origin: 46px 100px; animation-delay: 0ms; }
+.flame.f2 { transform-origin: 37px 99px; animation-delay: 130ms; }
+.flame.f3 { transform-origin: 55px 98px; animation-delay: 250ms; }
+
+/* --- motion streaks --- */
+.speed-line {
+  fill: none;
+  stroke: rgba(176, 245, 214, 0.78);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0;
+  animation: speed-line 1080ms linear infinite;
+}
+
+.speed-line.s1 { animation-delay: 0ms; }
+.speed-line.s2 { animation-delay: 160ms; }
+.speed-line.s3 { animation-delay: 320ms; }
+
+/* --- sweat --- */
+.sweat-drop {
+  fill: #7fe0ff;
+  opacity: 0;
+  animation: sweat-fly 1080ms ease-in infinite;
+}
+
+.sweat-drop.d1 { animation-delay: 120ms; }
+.sweat-drop.d2 { animation-delay: 360ms; }
+
+.fat-burner.heat-1 { border-color: rgba(255, 121, 41, 0.45); }
+.fat-burner.heat-2 { border-color: rgba(255, 145, 31, 0.65); box-shadow: 0 0 14px rgba(255, 98, 28, 0.12); }
+.fat-burner.heat-3 { border-color: rgba(255, 184, 68, 0.88); box-shadow: 0 0 20px rgba(255, 98, 28, 0.2); }
+.fat-burner.heat-4 { border-color: rgba(255, 220, 112, 0.95); box-shadow: 0 0 26px rgba(255, 128, 32, 0.32); }
+
+/* gait tempo rises with the burn level */
+.fat-burner.heat-0 .runner-body,
+.fat-burner.heat-0 .runner-shadow,
+.fat-burner.heat-0 .frame-a,
+.fat-burner.heat-0 .frame-p,
+.fat-burner.heat-0 .frame-b { animation-duration: 1480ms; }
+
+.fat-burner.heat-1 .runner-body,
+.fat-burner.heat-1 .runner-shadow,
+.fat-burner.heat-1 .frame-a,
+.fat-burner.heat-1 .frame-p,
+.fat-burner.heat-1 .frame-b { animation-duration: 1080ms; }
+
+.fat-burner.heat-2 .runner-body,
+.fat-burner.heat-2 .runner-shadow,
+.fat-burner.heat-2 .frame-a,
+.fat-burner.heat-2 .frame-p,
+.fat-burner.heat-2 .frame-b { animation-duration: 820ms; }
+
+.fat-burner.heat-3 .runner-body,
+.fat-burner.heat-3 .runner-shadow,
+.fat-burner.heat-3 .frame-a,
+.fat-burner.heat-3 .frame-p,
+.fat-burner.heat-3 .frame-b { animation-duration: 640ms; }
+
+.fat-burner.heat-4 .runner-body,
+.fat-burner.heat-4 .runner-shadow,
+.fat-burner.heat-4 .frame-a,
+.fat-burner.heat-4 .frame-p,
+.fat-burner.heat-4 .frame-b { animation-duration: 500ms; }
+
+/* streaks intensify with the burn level */
+.fat-burner.heat-0 .speed-line { opacity: 0; }
+.fat-burner.heat-1 .speed-line { opacity: 0.3; }
+.fat-burner.heat-2 .speed-line { opacity: 0.5; }
+.fat-burner.heat-3 .speed-line { opacity: 0.78; }
+.fat-burner.heat-4 .speed-line { opacity: 1; }
+
+/* sweat only once it gets hard */
+.fat-burner.heat-0 .sweat-drop,
+.fat-burner.heat-1 .sweat-drop { opacity: 0; }
+.fat-burner.heat-2 .sweat-drop { opacity: 0.5; }
+.fat-burner.heat-3 .sweat-drop { opacity: 0.78; }
+.fat-burner.heat-4 .sweat-drop { opacity: 1; }
+
+/* flame trail grows with the burn level */
+.fat-burner.heat-0 .flame { opacity: 0; }
+.fat-burner.heat-1 .flame { opacity: 0.42; }
+.fat-burner.heat-2 .flame { opacity: 0.66; }
+.fat-burner.heat-3 .flame { opacity: 0.86; }
+.fat-burner.heat-4 .flame { opacity: 1; }
+.fat-burner.heat-3 .flame-pack { transform: scale(1.12); transform-origin: 46px 100px; }
+.fat-burner.heat-4 .flame-pack { transform: scale(1.3); transform-origin: 46px 100px; }
+
+.fat-burner.burst .runner-core {
+  animation: burn-pop 520ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .runner-figure *,
+  .runner-body { animation: none !important; }
+  /* hold a single contact pose */
+  .frame-a { opacity: 1; }
+  .frame-p,
+  .frame-b { opacity: 0; }
+}
+
+@keyframes small-flame {
+  from { transform: translateY(0) scaleY(0.82) rotate(-3deg); }
+  to { transform: translateY(-4px) scaleY(1.08) rotate(4deg); }
+}
+
+@keyframes burn-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes body-bob {
+  0%, 50%, 100% { transform: translateY(0); }
+  25%, 75% { transform: translateY(-2.5px); }
+}
+
+@keyframes runner-shadow {
+  0%, 50%, 100% { transform: scaleX(1.12); opacity: 0.42; }
+  25%, 75% { transform: scaleX(0.82); opacity: 0.22; }
+}
+
+/* run-cycle frame switching: A on [0,25), pass on [25,50), B on [50,75), pass on [75,100) */
+@keyframes show-a {
+  0%, 24.9% { opacity: 1; }
+  25%, 100% { opacity: 0; }
+}
+
+@keyframes show-p {
+  0%, 24.9% { opacity: 0; }
+  25%, 49.9% { opacity: 1; }
+  50%, 74.9% { opacity: 0; }
+  75%, 100% { opacity: 1; }
+}
+
+@keyframes show-b {
+  0%, 49.9% { opacity: 0; }
+  50%, 74.9% { opacity: 1; }
+  75%, 100% { opacity: 0; }
+}
+
+@keyframes flame-flicker {
+  0% { transform: scaleY(0.82) scaleX(1.04); }
+  100% { transform: scaleY(1.16) scaleX(0.9); }
+}
+
+@keyframes speed-line {
+  0% { transform: translateX(30px); opacity: 0; }
+  25% { opacity: inherit; }
+  100% { transform: translateX(-26px); opacity: 0; }
+}
+
+@keyframes sweat-fly {
+  0% { transform: translate(0, 0) scale(0.7); opacity: 0; }
+  20% { opacity: inherit; }
+  100% { transform: translate(16px, 16px) scale(0.3); opacity: 0; }
+}
+
 .chart-wrap {
   padding: 8px;
   overflow: hidden;
@@ -809,17 +1097,270 @@ canvas {
   margin-bottom: 8px;
 }
 
-.switch-row {
-  display: inline-flex;
+.exercise-enable-row {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--ink);
+  gap: 18px;
+  flex-wrap: wrap;
 }
 
-.switch-row input {
-  width: 22px;
+.power-breaker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 86px;
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+}
+
+.breaker-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.breaker-panel {
+  position: relative;
+  display: grid;
+  grid-template-columns: 98px 72px;
+  align-items: center;
+  gap: 14px;
+  width: 184px;
+  min-height: 78px;
+}
+
+.breaker-box {
+  position: relative;
+  width: 98px;
+  height: 66px;
+  border: 2px solid #12120f;
+  border-radius: 4px;
+  background:
+    radial-gradient(circle at 10px 10px, #b7b3a5 0 2.5px, #1c1a15 3px 4.8px, transparent 5.2px),
+    radial-gradient(circle at 88px 10px, #b7b3a5 0 2.5px, #1c1a15 3px 4.8px, transparent 5.2px),
+    radial-gradient(circle at 10px 56px, #b7b3a5 0 2.5px, #1c1a15 3px 4.8px, transparent 5.2px),
+    radial-gradient(circle at 88px 56px, #b7b3a5 0 2.5px, #1c1a15 3px 4.8px, transparent 5.2px),
+    linear-gradient(105deg, rgba(255,255,255,0.18) 0 12%, transparent 13% 38%, rgba(0,0,0,0.22) 39% 49%, transparent 50% 100%),
+    radial-gradient(circle at 48% 48%, rgba(150, 92, 54, 0.28) 0 15%, transparent 16%),
+    linear-gradient(145deg, #888c82, #555a52 48%, #242923),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 1px, transparent 1px 7px);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,0.24),
+    inset 0 -5px 0 rgba(0,0,0,0.34),
+    4px 5px 0 rgba(0,0,0,0.36),
+    0 8px 18px rgba(0,0,0,0.22);
+}
+
+.breaker-box::before {
+  content: "";
+  position: absolute;
+  left: 28px;
+  top: 12px;
+  width: 42px;
+  height: 42px;
+  border: 2px solid #171513;
+  border-radius: 5px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.24)),
+    linear-gradient(145deg, #2d312f, #0c0e0d);
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.7),
+    0 1px 0 rgba(255,255,255,0.12);
+}
+
+.breaker-label {
+  position: absolute;
+  right: 7px;
+  z-index: 3;
+  font-size: 0.56rem;
+  font-weight: 1000;
+  letter-spacing: 0.05em;
+  color: rgba(231, 230, 211, 0.42);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.72);
+  transition: color 180ms ease, text-shadow 180ms ease;
+}
+
+.breaker-label.on {
+  top: 8px;
+}
+
+.breaker-label.off {
+  bottom: 7px;
+  color: rgba(255, 95, 60, 0.86);
+}
+
+.breaker-toggle {
+  position: absolute;
+  left: 33px;
+  top: 31px;
+  z-index: 4;
+  width: 32px;
   height: 22px;
-  accent-color: var(--violet);
+  border: 1px solid #080807;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.24), transparent 18%),
+    linear-gradient(160deg, #45423d 0 42%, #161514 43% 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,0.15),
+    inset 0 -5px 8px rgba(0,0,0,0.64),
+    0 5px 8px rgba(0,0,0,0.55);
+  transform-origin: 50% 0;
+  transform: perspective(80px) rotateX(-16deg);
+  transition: top 190ms ease, transform 190ms ease, background 190ms ease, box-shadow 190ms ease;
+}
+
+.breaker-toggle::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 82, 48, 0.52);
+  box-shadow: 0 0 8px rgba(255, 61, 33, 0.38);
+  transition: background 180ms ease, box-shadow 180ms ease;
+}
+
+.breaker-input:checked + .breaker-panel .breaker-toggle {
+  top: 14px;
+  transform: perspective(80px) rotateX(16deg);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.3), transparent 18%),
+    linear-gradient(160deg, #68635a 0 42%, #1f211f 43% 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,0.2),
+    inset 0 -4px 8px rgba(0,0,0,0.52),
+    0 3px 8px rgba(0,0,0,0.5);
+}
+
+.breaker-input:checked + .breaker-panel .breaker-toggle::after {
+  background: rgba(87, 255, 184, 0.8);
+  box-shadow: 0 0 10px rgba(80, 255, 184, 0.7);
+}
+
+.breaker-input:checked + .breaker-panel .breaker-label.on {
+  color: rgba(107, 255, 188, 0.96);
+  text-shadow:
+    0 0 4px rgba(107, 255, 188, 0.8),
+    0 0 10px rgba(31, 192, 131, 0.62);
+}
+
+.breaker-input:checked + .breaker-panel .breaker-label.off {
+  color: rgba(231, 230, 211, 0.32);
+  text-shadow: 0 1px 1px rgba(0,0,0,0.72);
+}
+
+.breaker-lamp {
+  position: relative;
+  z-index: 3;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 46% 46% 42% 42%;
+  background:
+    linear-gradient(120deg, rgba(255,255,255,0.38) 0 12%, transparent 13% 100%),
+    radial-gradient(ellipse at 35% 20%, rgba(255,255,255,0.72) 0 12%, rgba(255,255,255,0.18) 13% 29%, transparent 30%),
+    radial-gradient(ellipse at 50% 54%, rgba(35, 21, 18, 0.98), rgba(8, 7, 8, 0.99) 68%);
+  color: rgba(118, 42, 22, 0.82);
+  font-size: 0.88rem;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-shadow: none;
+  box-shadow:
+    inset 0 7px 12px rgba(255,255,255,0.22),
+    inset 0 -8px 12px rgba(0,0,0,0.62),
+    0 5px 0 rgba(69, 57, 45, 0.96),
+    0 11px 18px rgba(0,0,0,0.46);
+  transition: color 180ms ease, text-shadow 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.breaker-lamp::before {
+  content: "";
+  position: absolute;
+  inset: 7px 9px auto;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.76), rgba(255,255,255,0.08));
+  filter: blur(0.4px);
+  pointer-events: none;
+}
+
+.breaker-lamp::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.breaker-input:checked + .breaker-panel .breaker-lamp {
+  background:
+    linear-gradient(120deg, rgba(255,255,255,0.62) 0 15%, transparent 16% 100%),
+    radial-gradient(ellipse at 35% 22%, rgba(255,255,255,0.94) 0 12%, rgba(255,255,255,0.36) 13% 30%, transparent 31%),
+    radial-gradient(ellipse at 50% 54%, rgba(255, 72, 30, 0.96), rgba(121, 21, 10, 0.99) 68%);
+  color: #fff7d8;
+  text-shadow:
+    0 0 2px #fff,
+    0 0 5px #fff4ba,
+    0 0 12px #ff9c25,
+    0 0 22px #ff3d1e,
+    0 0 42px rgba(255, 43, 20, 0.78);
+  box-shadow:
+    inset 0 0 15px rgba(255, 212, 127, 0.36),
+    inset 0 6px 13px rgba(255,255,255,0.34),
+    inset 0 -9px 12px rgba(75, 12, 6, 0.68),
+    0 5px 0 rgba(90, 77, 62, 0.98),
+    0 0 18px rgba(255, 226, 156, 0.58),
+    0 0 34px rgba(255, 88, 28, 0.82),
+    0 0 62px rgba(255, 43, 20, 0.44);
+}
+
+.spark-burst {
+  position: absolute;
+  left: 150px;
+  top: 45px;
+  width: 2px;
+  height: 2px;
+  pointer-events: none;
+}
+
+.spark-burst span {
+  position: absolute;
+  width: 3px;
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fff9c9, #ffb02e 52%, rgba(255, 70, 20, 0));
+  box-shadow: 0 0 8px rgba(255, 187, 39, 0.95);
+  opacity: 0;
+}
+
+.power-breaker.firing .spark-burst span {
+  animation: breaker-spark 620ms ease-out forwards;
+}
+
+@keyframes breaker-spark {
+  0% {
+    transform: rotate(var(--angle)) translateY(0) scaleY(0.35);
+    opacity: 0;
+  }
+  16% { opacity: 1; }
+  100% {
+    transform: rotate(var(--angle)) translateY(calc(var(--distance) * -1)) scaleY(0.05);
+    opacity: 0;
+  }
+}
+
+.inline-legend {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.25;
 }
 
 .level-control {
@@ -846,40 +1387,6 @@ canvas {
     inset 0 2px 0 rgba(255, 255, 255, 0.28),
     inset 0 -3px 0 rgba(0, 0, 0, 0.18),
     0 0 18px rgba(139, 92, 246, 0.22);
-}
-
-.level-legend {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.level-legend div {
-  min-height: 52px;
-  padding: 8px;
-  border: 1px solid rgba(180, 140, 255, 0.2);
-  border-radius: 8px;
-  background: rgba(8, 17, 15, 0.62);
-}
-
-.level-legend dt,
-.level-legend dd {
-  margin: 0;
-}
-
-.level-legend dt {
-  color: var(--violet-2);
-  font-size: 0.72rem;
-  font-weight: 900;
-}
-
-.level-legend dd {
-  margin-top: 3px;
-  color: var(--ink);
-  font-size: 0.86rem;
-  font-weight: 900;
-  line-height: 1.2;
 }
 
 .generated-menu:empty {
@@ -925,6 +1432,12 @@ canvas {
 
 .generated-menu li {
   margin: 5px 0;
+}
+
+.generated-menu a {
+  color: var(--blue);
+  font-weight: 900;
+  text-decoration: none;
 }
 
 .full-button {
@@ -982,6 +1495,10 @@ canvas {
   .ring { justify-self: center; }
   .entry-form { grid-template-columns: 1fr; }
   .record-actions { grid-template-columns: 1fr; }
+  .fat-burner { grid-template-columns: 144px minmax(0, 1fr); gap: 8px; padding: 9px; }
+  .runner-core { width: 140px; height: 86px; }
+  .fat-burner p { font-size: 0.76rem; line-height: 1.35; }
+  .exercise-enable-row { gap: 10px; }
   .metric-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .metric-card { min-height: 76px; padding: 11px; }
   .metric-card strong { font-size: 1.02rem; }

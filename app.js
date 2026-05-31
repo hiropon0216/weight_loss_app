@@ -27,6 +27,7 @@ const defaultState = {
   exerciseLogs: [],
   dailyChecks: [],
   workoutPlan: null,
+  workoutHistory: [],
 };
 
 let state = loadState();
@@ -196,6 +197,7 @@ function renderToday() {
   document.querySelectorAll("[data-check]").forEach((input) => {
     input.checked = Boolean(checks[input.dataset.check]);
   });
+  updateFoodBurner();
   document.querySelector("#dailyNote").value = checks.note || "";
   setRankBadge(document.querySelector("#dailyRank"), dailyRank(selectedDate));
   renderRecordWorkoutPlan();
@@ -267,8 +269,8 @@ function renderWeeklySummary() {
     const date = toIsoDate(cursor);
     const hasRecord = state.weightEntries.some((entry) => entry.date === date);
     const hasCheck = state.dailyChecks.some((entry) =>
-      entry.date === date && (
-        entry.exerciseDone || entry.protein100 || entry.vegetables350 || entry.carbPortion || entry.noFried ||
+        entry.date === date && (
+        entry.exerciseDone || entry.meal80 || entry.protein100 || entry.vegetables350 || entry.carbPortion || entry.noFried ||
         entry.snackUnder200 || entry.noJuiceAlcohol || entry.noLateSnack || entry.noSweets || entry.water1500 || entry.note
       )
     );
@@ -289,7 +291,7 @@ function renderWeeklySummary() {
 }
 
 function renderExercise() {
-  ["running", "strength", "bag"].forEach((type) => {
+  ["strength", "bag", "running"].forEach((type) => {
     if (!selectedPlanLevel(type)) setPlanLevel(type, "normal");
   });
   renderWorkoutPlan();
@@ -398,6 +400,7 @@ function getSelectedCheck() {
     check = {
       date,
       exerciseDone: false,
+      meal80: false,
       protein100: false,
       vegetables350: false,
       carbPortion: false,
@@ -417,7 +420,7 @@ function getSelectedCheck() {
 function hasSelectedCheckData() {
   const check = state.dailyChecks.find((entry) => entry.date === selectedDate);
   return Boolean(check && (
-    check.exerciseDone || check.protein100 || check.vegetables350 || check.carbPortion || check.noFried ||
+    check.exerciseDone || check.meal80 || check.protein100 || check.vegetables350 || check.carbPortion || check.noFried ||
     check.snackUnder200 || check.noJuiceAlcohol || check.noLateSnack || check.noSweets || check.water1500 || check.note
   ));
 }
@@ -451,17 +454,18 @@ function streakDays() {
 function dailyScore(date) {
   const hasWeight = state.weightEntries.some((entry) => entry.date === date);
   const check = state.dailyChecks.find((entry) => entry.date === date);
-  let score = hasWeight ? 20 : 0;
-  if (check?.exerciseDone) score += 20;
-  if (check?.protein100) score += 18;
-  if (check?.vegetables350) score += 12;
+  let score = hasWeight ? 3 : 0;
+  if (check?.exerciseDone) score += 15;
+  if (check?.meal80) score += 14;
+  if (check?.protein100) score += 12;
+  if (check?.vegetables350) score += 8;
   if (check?.carbPortion) score += 10;
-  if (check?.noFried) score += 5;
-  if (check?.snackUnder200) score += 5;
-  if (check?.noJuiceAlcohol) score += 3;
-  if (check?.noLateSnack) score += 2;
-  if (check?.noSweets) score += 3;
-  if (check?.water1500) score += 2;
+  if (check?.noFried) score += 8;
+  if (check?.snackUnder200) score += 6;
+  if (check?.noJuiceAlcohol) score += 7;
+  if (check?.noLateSnack) score += 5;
+  if (check?.noSweets) score += 8;
+  if (check?.water1500) score += 4;
   score = Math.max(0, score);
   return Math.min(100, score);
 }
@@ -471,10 +475,10 @@ function dailyRank(date) {
 }
 
 function rankFromScore(score) {
-  if (score >= 90) return "S";
-  if (score >= 75) return "A";
-  if (score >= 60) return "B";
-  if (score >= 40) return "C";
+  if (score >= 92) return "S";
+  if (score >= 82) return "A";
+  if (score >= 70) return "B";
+  if (score >= 55) return "C";
   return "D";
 }
 
@@ -492,7 +496,7 @@ function calendarScoreEntries() {
     ...state.weightEntries.map((entry) => entry.date),
     ...state.dailyChecks
       .filter((entry) =>
-        entry.exerciseDone || entry.protein100 || entry.vegetables350 || entry.carbPortion || entry.noFried ||
+        entry.exerciseDone || entry.meal80 || entry.protein100 || entry.vegetables350 || entry.carbPortion || entry.noFried ||
         entry.snackUnder200 || entry.noJuiceAlcohol || entry.noLateSnack || entry.noSweets || entry.water1500 || entry.note
       )
       .map((entry) => entry.date),
@@ -515,22 +519,69 @@ function levelLabel(level) {
 }
 
 function buildWorkoutPlan() {
-  const labels = { running: "ランニング", strength: "筋トレ", bag: "サンドバッグ" };
+  const labels = { strength: "筋トレ", bag: "サンドバッグ", running: "ランニング" };
+  const strengthPools = {
+    core: [
+      { id: "plank", text: "自重・腹筋: プランク 45秒", url: "https://melos.media/training/46433/" },
+      { id: "side-plank", text: "自重・腹筋: サイドプランク 30秒/側", url: "https://melos.media/training/64419/2/" },
+      { id: "crunch", text: "自重・腹筋: クランチ 15回", url: "https://melos.media/training/210369/" },
+      { id: "leg-raise", text: "自重・腹筋: レッグレイズ 12回", url: "https://www.shopjapan.co.jp/diet_labo/training/article_023/" },
+      { id: "dead-bug", text: "自重・腹筋: デッドバグ 10回/側", url: "https://fily.jp/articles/2000" },
+      { id: "mountain-climber", text: "自重・腹筋: マウンテンクライマー 30秒", url: "https://ufit.co.jp/blogs/training/mountain-climber" },
+      { id: "reverse-crunch", text: "自重・腹筋: リバースクランチ 12回", url: "https://melos.media/training/151743/" },
+      { id: "bicycle-crunch", text: "自重・腹筋: バイシクルクランチ 20回", url: "https://melos.media/training/151743/" },
+      { id: "hollow-hold", text: "自重・腹筋: ホローホールド 30秒", url: "https://melos.media/training/151743/" },
+      { id: "plank-shoulder-tap", text: "自重・腹筋: プランクショルダータップ 20回", url: "https://note.com/guest_iwasawa/n/n3157d31073b2" },
+      { id: "heel-touch", text: "自重・腹筋: ヒールタッチ 20回", url: "https://melos.media/training/151743/" },
+      { id: "russian-twist", text: "自重・腹筋: ロシアンツイスト 20回", url: "https://ufit.co.jp/blogs/training/russian-twist" },
+    ],
+    bodyweight: [
+      { id: "squat", text: "自重: スクワット 15回", url: "https://fily.jp/articles/1345" },
+      { id: "push-up", text: "自重: 腕立て伏せ 10回", url: "https://melos.media/training/29627/" },
+      { id: "knee-push-up", text: "自重: 膝つき腕立て伏せ 12回", url: "https://melos.media/training/156017/" },
+      { id: "hip-lift", text: "自重: ヒップリフト 15回", url: "https://melos.media/training/60969/" },
+      { id: "back-lunge", text: "自重: バックランジ 10回/脚", url: "https://melos.media/training/272277/2/" },
+      { id: "bird-dog", text: "自重: バードドッグ 10回/側", url: "https://www.nike.com/jp/a/bird-dog-exercise/" },
+      { id: "split-squat", text: "自重: スプリットスクワット 10回/脚", url: "https://qitano.com/split-squat" },
+      { id: "burpee", text: "自重: バーピー 8回", url: "https://melos.media/training/32012/" },
+      { id: "calf-raise", text: "自重: カーフレイズ 20回", url: "https://fily.jp/articles/4835" },
+      { id: "pike-push-up", text: "自重: パイクプッシュアップ 8回", url: "https://melos.media/training/184478/" },
+    ],
+    dumbbell: [
+      { id: "goblet-squat", text: "ダンベル: ゴブレットスクワット 12回", url: "https://www.kintore-hack.com/how-to-goblet-squat/" },
+      { id: "db-rdl", text: "ダンベル: ルーマニアンデッドリフト 10回", url: "https://fibe.jp/faq/romanian-deadlift-dumbbell/" },
+      { id: "floor-press", text: "ダンベル: フロアプレス 10回", url: "https://vokka.jp/17340/" },
+      { id: "one-arm-row", text: "ダンベル: ワンハンドロー 12回/側", url: "https://sports.yahoo.co.jp/column/detail/2024071200022-spnavido" },
+      { id: "shoulder-press", text: "ダンベル: ショルダープレス 10回", url: "https://belegend.jp/article/communication/9594/" },
+      { id: "db-curl", text: "ダンベル: ダンベルカール 12回", url: "https://fily.jp/articles/2285" },
+      { id: "db-side-bend", text: "ダンベル: サイドベント 12回/側", url: "https://melos.media/training/151743/" },
+      { id: "db-hip-lift", text: "ダンベル: ヒップリフト 15回", url: "https://melos.media/training/60969/" },
+      { id: "db-lunge", text: "ダンベル: ランジ 10回/脚", url: "https://qitano.com/dumbbell-lunge" },
+      { id: "db-deadlift", text: "ダンベル: デッドリフト 10回", url: "https://power-hacks.com/dumbbell-deadlift/" },
+      { id: "db-thruster", text: "ダンベル: スラスター 10回", url: "https://fitwill.app/ja/exercise/2968/dumbbell-thruster/" },
+      { id: "db-reverse-fly", text: "ダンベル: リバースフライ 12回", url: "https://fily.jp/articles/3555" },
+    ],
+  };
+  const strengthCounts = {
+    soft: { core: 2, bodyweight: 1, dumbbell: 2, rounds: 2 },
+    normal: { core: 3, bodyweight: 2, dumbbell: 3, rounds: 3 },
+    hard: { core: 4, bodyweight: 2, dumbbell: 4, rounds: 4 },
+  };
   const menus = {
-    running: {
-      soft: { target: "5km", steps: ["5kmイージーラン", "最後に流し20秒 x 3本"] },
-      normal: { target: "10km", steps: ["10kmジョグ", "中盤に1分やや速め x 5本"] },
-      hard: { target: "20km", steps: ["20kmロング走", "後半は会話できるペースを維持", "5分クールダウン"] },
-    },
     strength: {
-      soft: { target: "15分目安", steps: ["ダンベルスクワット 10回 x 2", "床プレス 10回 x 2", "ワンハンドロー 10回 x 2"] },
-      normal: { target: "30分", steps: ["ゴブレットスクワット 12回 x 4", "床プレス 10回 x 4", "ワンハンドロー 12回 x 4", "プランク45秒 x 3"] },
-      hard: { target: "1時間", steps: ["ブルガリアンスクワット 10回 x 4/脚", "床プレス 12回 x 5", "ワンハンドロー 12回 x 5", "スクワットジャンプ 12回 x 3"] },
+      soft: { target: "15分", steps: buildStrengthSteps("soft", strengthPools, strengthCounts) },
+      normal: { target: "30分", steps: buildStrengthSteps("normal", strengthPools, strengthCounts) },
+      hard: { target: "1時間", steps: buildStrengthSteps("hard", strengthPools, strengthCounts) },
     },
     bag: {
-      soft: { target: "20分", steps: ["2分 x 6R", "フォーム重視、R間休憩60秒"] },
-      normal: { target: "40分", steps: ["3分 x 8R", "各R最後30秒だけ手数アップ", "R間休憩60秒"] },
-      hard: { target: "1時間", steps: ["3分 x 12R", "偶数R最後30秒ラッシュ", "R間休憩45秒"] },
+      soft: { target: "6R", steps: ["6R（1R 3分 + 20秒休憩）"] },
+      normal: { target: "12R", steps: ["12R（1R 3分 + 20秒休憩）"] },
+      hard: { target: "18R", steps: ["18R（1R 3分 + 20秒休憩）"] },
+    },
+    running: {
+      soft: { target: "5km", steps: ["5kmを会話できるペースで走る"] },
+      normal: { target: "10km", steps: ["10kmを会話できるペースで走る"] },
+      hard: { target: "20km", steps: ["20kmを会話できるペースで走る"] },
     },
   };
 
@@ -542,6 +593,50 @@ function buildWorkoutPlan() {
     });
 
   return { date: selectedDate, items };
+}
+
+function buildStrengthSteps(level, pools, countsByLevel) {
+  const config = countsByLevel[level];
+  const previousIds = latestStrengthHistoryIds();
+  const steps = [
+    ...pickWorkoutSteps(pools.core, config.core, previousIds),
+    ...pickWorkoutSteps(pools.bodyweight, config.bodyweight, previousIds),
+    ...pickWorkoutSteps(pools.dumbbell, config.dumbbell, previousIds),
+  ];
+  return steps.map((step) => ({ ...step, text: `${step.text} x ${config.rounds}` }));
+}
+
+function latestStrengthHistoryIds() {
+  return new Set(
+    [...(state.workoutHistory || [])]
+      .filter((entry) => entry.date < selectedDate && entry.strengthStepIds?.length)
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .at(0)?.strengthStepIds || []
+  );
+}
+
+function pickWorkoutSteps(pool, count, previousIds) {
+  const fresh = shuffle(pool.filter((step) => !previousIds.has(step.id)));
+  const fallback = shuffle(pool.filter((step) => previousIds.has(step.id)));
+  return [...fresh, ...fallback].slice(0, count);
+}
+
+function shuffle(items) {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+function rememberWorkoutPlan(plan) {
+  const strength = plan.items.find((item) => item.type === "strength");
+  if (!strength) return;
+  state.workoutHistory = [
+    ...(state.workoutHistory || []).filter((entry) => entry.date !== plan.date),
+    { date: plan.date, strengthStepIds: strength.steps.map((step) => step.id).filter(Boolean) },
+  ].sort((a, b) => a.date.localeCompare(b.date)).slice(-30);
 }
 
 function renderPlanInto(selector) {
@@ -561,10 +656,15 @@ function renderPlanInto(selector) {
     ${plan.items.map((item) => `
       <article class="generated-item">
         <strong>${item.label}<span>${levelLabel(item.level)} / ${escapeHtml(item.target)}</span></strong>
-        <ul>${item.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ul>
+        <ul>${item.steps.map(renderWorkoutStep).join("")}</ul>
       </article>
     `).join("")}
   `;
+}
+
+function renderWorkoutStep(step) {
+  if (typeof step === "string") return `<li>${escapeHtml(step)}</li>`;
+  return `<li>${escapeHtml(step.text)} <a href="${escapeHtml(step.url)}" target="_blank" rel="noopener">参考</a></li>`;
 }
 
 function renderWorkoutPlan() {
@@ -574,7 +674,9 @@ function renderWorkoutPlan() {
 function renderRecordWorkoutPlan() {
   if (state.workoutPlan?.date !== selectedDate) {
     const container = document.querySelector("#recordGeneratedMenu");
-    if (container) container.innerHTML = "";
+    if (container) {
+      container.innerHTML = `<p>この日の運動メニューはまだ自動生成されていません。運動画面で「最適メニューの自動生成」を押すと、ここにメニューが出ます。</p>`;
+    }
     return;
   }
   renderPlanInto("#recordGeneratedMenu");
@@ -679,6 +781,13 @@ function bindEvents() {
     render();
   });
 
+  document.querySelector("#dailyChecks").addEventListener("change", (event) => {
+    const input = event.target.closest("[data-check]");
+    if (!input) return;
+    updateFoodBurner();
+    if (input.checked) launchFoodBurn();
+  });
+
   document.querySelector("#exercisePlanner").addEventListener("click", (event) => {
     const button = event.target.closest("[data-plan-level]");
     if (!button) return;
@@ -686,8 +795,15 @@ function bindEvents() {
     setPlanLevel(type, level);
   });
 
+  document.querySelector("#exercisePlanner").addEventListener("change", (event) => {
+    const input = event.target.closest("[data-plan-enabled]");
+    if (!input || !input.checked) return;
+    launchBreakerSparks(input.closest(".power-breaker"));
+  });
+
   document.querySelector("#generateWorkout").addEventListener("click", () => {
     state.workoutPlan = buildWorkoutPlan();
+    rememberWorkoutPlan(state.workoutPlan);
     saveState();
     renderWorkoutPlan();
     renderRecordWorkoutPlan();
@@ -697,6 +813,8 @@ function bindEvents() {
     const button = event.target.closest("[data-exercise]");
     if (!button) return;
     setExerciseSegment(button.dataset.exercise === "true");
+    updateFoodBurner();
+    if (button.dataset.exercise === "true") launchFoodBurn();
   });
   document.querySelector("#resetData").addEventListener("click", () => {
     if (confirm("端末内の体重・運動データをすべて削除しますか？")) {
@@ -706,6 +824,57 @@ function bindEvents() {
     }
   });
   window.addEventListener("resize", drawChart);
+}
+
+function launchBreakerSparks(breaker) {
+  const burst = breaker?.querySelector(".spark-burst");
+  if (!burst) return;
+  burst.innerHTML = "";
+  breaker.classList.remove("firing");
+  for (let i = 0; i < 18; i += 1) {
+    const spark = document.createElement("span");
+    spark.style.setProperty("--angle", `${-75 + Math.random() * 150}deg`);
+    spark.style.setProperty("--distance", `${26 + Math.random() * 38}px`);
+    spark.style.animationDelay = `${Math.random() * 0.08}s`;
+    burst.appendChild(spark);
+  }
+  requestAnimationFrame(() => breaker.classList.add("firing"));
+  setTimeout(() => {
+    breaker.classList.remove("firing");
+    burst.innerHTML = "";
+  }, 720);
+}
+
+function updateFoodBurner() {
+  const inputs = [...document.querySelectorAll("[data-check]")];
+  const checked = inputs.filter((input) => input.checked).length;
+  inputs.forEach((input) => input.closest("label")?.classList.toggle("checked", input.checked));
+  const exerciseDone = document.querySelector("[data-exercise='true']")?.classList.contains("active") || false;
+
+  const burner = document.querySelector("#fatBurner");
+  if (!burner) return;
+  const score = checked + (exerciseDone ? 2 : 0);
+  const maxScore = inputs.length + 2;
+  const level = score === 0 ? 0 : Math.min(4, Math.ceil((score / maxScore) * 4));
+  burner.className = `fat-burner heat-${level}`;
+  const text = document.querySelector("#fatBurnText");
+  if (!text) return;
+  const messages = [
+    "食事チェックと運動実績でランナーの燃焼ペースが上がります。",
+    "ウォームアップ。減量に効く行動が積み上がり始めています。",
+    "ジョグ燃焼中。食事と運動の流れが作れています。",
+    "ペースアップ。脂肪を落とす一日の形に近づいています。",
+    "全力燃焼。今日の食事管理と運動実績はかなり強いです。",
+  ];
+  text.textContent = `食事 ${checked}/${inputs.length}・運動 ${exerciseDone ? "実施" : "休養"} / ${messages[level]}`;
+}
+
+function launchFoodBurn() {
+  const burner = document.querySelector("#fatBurner");
+  if (!burner) return;
+  burner.classList.remove("burst");
+  requestAnimationFrame(() => burner.classList.add("burst"));
+  setTimeout(() => burner.classList.remove("burst"), 560);
 }
 
 function showResultModal() {

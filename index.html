@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4f7f5">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=21">
+  <link rel="stylesheet" href="./styles.css?v=39">
 </head>
 <body>
   <div id="app">
@@ -107,6 +107,7 @@
             <h2>食事チェック</h2>
           </div>
           <div class="check-grid" id="dailyChecks">
+            <label><input type="checkbox" data-check="meal80"> 毎食、腹八分で止めた</label>
             <label><input type="checkbox" data-check="protein100"> たんぱく質100g</label>
             <label><input type="checkbox" data-check="vegetables350"> 野菜350g/日</label>
             <label><input type="checkbox" data-check="carbPortion"> 米・麺・パン150g/食</label>
@@ -114,10 +115,81 @@
             <label><input type="checkbox" data-check="snackUnder200"> 間食200kcal以内</label>
             <label><input type="checkbox" data-check="noJuiceAlcohol"> ジュース・酒0ml</label>
             <label><input type="checkbox" data-check="noLateSnack"> 21時以降の食事なし</label>
-            <label><input type="checkbox" data-check="noSweets"> お菓子抜き</label>
+            <label><input type="checkbox" data-check="noSweets"> お菓子・菓子パンなし</label>
             <label><input type="checkbox" data-check="water1500"> 水・お茶1.5L以上</label>
           </div>
           <textarea id="dailyNote" rows="3" placeholder="体調、睡眠、外食など"></textarea>
+        </section>
+
+        <section class="section-block burn-summary" aria-labelledby="burnSummaryTitle">
+          <div class="section-head">
+            <h2 id="burnSummaryTitle">燃焼サマリ</h2>
+          </div>
+          <div class="fat-burner heat-0" id="fatBurner" aria-live="polite">
+            <div class="runner-core" aria-hidden="true">
+              <svg class="runner-figure" viewBox="22 4 96 100" focusable="false">
+                <defs>
+                  <linearGradient id="runnerGradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop class="g-top" offset="0" stop-color="#36d98f"/>
+                    <stop class="g-bot" offset="1" stop-color="#0e7e57"/>
+                  </linearGradient>
+                  <linearGradient id="flameGradient" x1="0" x2="0" y1="1" y2="0">
+                    <stop offset="0" stop-color="#ff7a14"/>
+                    <stop offset="0.55" stop-color="#ff5a1a"/>
+                    <stop offset="1" stop-color="#ffd56b"/>
+                  </linearGradient>
+                </defs>
+                <g class="speed-pack">
+                  <line class="speed-line s1" x1="28" y1="34" x2="56" y2="34"/>
+                  <line class="speed-line s2" x1="24" y1="52" x2="54" y2="52"/>
+                  <line class="speed-line s3" x1="30" y1="70" x2="52" y2="70"/>
+                </g>
+                <g class="flame-pack">
+                  <path class="flame f1" fill="url(#flameGradient)" d="M46 100 C39 91 44 83 46 77 C51 84 53 92 48 99 C47 100 46 100 46 100Z"/>
+                  <path class="flame f2" fill="url(#flameGradient)" d="M37 99 C32 92 36 86 38 82 C42 87 44 92 40 98 C39 99 38 99 37 99Z"/>
+                  <path class="flame f3" fill="url(#flameGradient)" d="M55 98 C51 92 54 87 56 83 C59 88 60 92 57 97 C56 98 55 98 55 98Z"/>
+                </g>
+                <ellipse class="runner-shadow" cx="84" cy="99" rx="34" ry="5.5"/>
+                <g class="runner-body">
+                  <g class="limbs-far">
+                    <g class="frame-a">
+                      <polyline class="limb leg" stroke="url(#runnerGradient)" points="78,58 67,69 57,83 49,84"/>
+                      <polyline class="limb arm" stroke="url(#runnerGradient)" points="91,32 103,39 100,27"/>
+                    </g>
+                    <g class="frame-p">
+                      <polyline class="limb leg" stroke="url(#runnerGradient)" points="78,58 75,73 73,89 82,91"/>
+                      <polyline class="limb arm" stroke="url(#runnerGradient)" points="91,32 86,43 92,51"/>
+                    </g>
+                    <g class="frame-b">
+                      <polyline class="limb leg" stroke="url(#runnerGradient)" points="78,58 93,63 96,82 105,84"/>
+                      <polyline class="limb arm" stroke="url(#runnerGradient)" points="91,32 81,43 88,53"/>
+                    </g>
+                  </g>
+                  <path class="torso" fill="url(#runnerGradient)" d="M86 28 L95 33 L82 60 L72 55 Z"/>
+                  <circle class="head" fill="url(#runnerGradient)" cx="95" cy="18" r="8"/>
+                  <g class="limbs-near">
+                    <g class="frame-a">
+                      <polyline class="limb leg" stroke="url(#runnerGradient)" points="78,58 93,63 96,82 105,84"/>
+                      <polyline class="limb arm" stroke="url(#runnerGradient)" points="91,32 81,43 88,53"/>
+                    </g>
+                    <g class="frame-p">
+                      <polyline class="limb leg" stroke="url(#runnerGradient)" points="78,58 82,71 77,85 86,87"/>
+                      <polyline class="limb arm" stroke="url(#runnerGradient)" points="91,32 95,43 91,33"/>
+                    </g>
+                    <g class="frame-b">
+                      <polyline class="limb leg" stroke="url(#runnerGradient)" points="78,58 67,69 57,83 49,84"/>
+                      <polyline class="limb arm" stroke="url(#runnerGradient)" points="91,32 103,39 100,27"/>
+                    </g>
+                  </g>
+                </g>
+                <g class="sweat-pack">
+                  <circle class="sweat-drop d1" cx="103" cy="20" r="2.2"/>
+                  <circle class="sweat-drop d2" cx="99" cy="13" r="1.7"/>
+                </g>
+              </svg>
+            </div>
+            <p id="fatBurnText">食事チェックと運動実績でランナーの燃焼ペースが上がります。</p>
+          </div>
         </section>
 
         <div class="record-actions">
@@ -172,51 +244,78 @@
         <div class="exercise-planner" id="exercisePlanner">
           <article class="exercise-card">
             <div>
-              <h3>ランニング</h3>
-              <label class="switch-row"><input type="checkbox" data-plan-enabled="running"> 実施</label>
-            </div>
-            <div class="level-control" role="group" aria-label="ランニング強度">
-              <button type="button" data-plan-level="running:soft">ソフト</button>
-              <button type="button" data-plan-level="running:normal">ノーマル</button>
-              <button type="button" data-plan-level="running:hard">ハード</button>
-            </div>
-            <dl class="level-legend" aria-label="ランニング強度の目安">
-              <div><dt>ソフト</dt><dd>5km</dd></div>
-              <div><dt>ノーマル</dt><dd>10km</dd></div>
-              <div><dt>ハード</dt><dd>20km</dd></div>
-            </dl>
-          </article>
-          <article class="exercise-card">
-            <div>
-              <h3>筋トレ</h3>
-              <label class="switch-row"><input type="checkbox" data-plan-enabled="strength"> 実施</label>
+              <h3>筋トレ 🏋️</h3>
+              <div class="exercise-enable-row">
+                <label class="power-breaker" aria-label="筋トレを実施">
+                  <input class="breaker-input" type="checkbox" data-plan-enabled="strength">
+                  <span class="breaker-panel" aria-hidden="true">
+                    <span class="breaker-box">
+                      <span class="breaker-label off">OFF</span>
+                      <span class="breaker-toggle"></span>
+                      <span class="breaker-label on">ON</span>
+                    </span>
+                    <span class="breaker-lamp">実施</span>
+                  </span>
+                  <span class="spark-burst" aria-hidden="true"></span>
+                </label>
+                <span class="inline-legend">ソフト15分 / ノーマル30分 / ハード1時間</span>
+              </div>
             </div>
             <div class="level-control" role="group" aria-label="筋トレ強度">
               <button type="button" data-plan-level="strength:soft">ソフト</button>
               <button type="button" data-plan-level="strength:normal">ノーマル</button>
               <button type="button" data-plan-level="strength:hard">ハード</button>
             </div>
-            <dl class="level-legend" aria-label="筋トレ強度の目安">
-              <div><dt>ソフト</dt><dd>15分目安</dd></div>
-              <div><dt>ノーマル</dt><dd>30分</dd></div>
-              <div><dt>ハード</dt><dd>1時間</dd></div>
-            </dl>
           </article>
           <article class="exercise-card">
             <div>
-              <h3>サンドバッグ</h3>
-              <label class="switch-row"><input type="checkbox" data-plan-enabled="bag"> 実施</label>
+              <h3>サンドバッグ 🥊</h3>
+              <div class="exercise-enable-row">
+                <label class="power-breaker" aria-label="サンドバッグを実施">
+                  <input class="breaker-input" type="checkbox" data-plan-enabled="bag">
+                  <span class="breaker-panel" aria-hidden="true">
+                    <span class="breaker-box">
+                      <span class="breaker-label off">OFF</span>
+                      <span class="breaker-toggle"></span>
+                      <span class="breaker-label on">ON</span>
+                    </span>
+                    <span class="breaker-lamp">実施</span>
+                  </span>
+                  <span class="spark-burst" aria-hidden="true"></span>
+                </label>
+                <span class="inline-legend">ソフト6R / ノーマル12R / ハード18R</span>
+              </div>
             </div>
             <div class="level-control" role="group" aria-label="サンドバッグ強度">
               <button type="button" data-plan-level="bag:soft">ソフト</button>
               <button type="button" data-plan-level="bag:normal">ノーマル</button>
               <button type="button" data-plan-level="bag:hard">ハード</button>
             </div>
-            <dl class="level-legend" aria-label="サンドバッグ強度の目安">
-              <div><dt>ソフト</dt><dd>20分</dd></div>
-              <div><dt>ノーマル</dt><dd>40分</dd></div>
-              <div><dt>ハード</dt><dd>1時間</dd></div>
-            </dl>
+          </article>
+          <article class="exercise-card">
+            <div>
+              <h3>ランニング 🏃</h3>
+              <div class="exercise-enable-row">
+                <label class="power-breaker" aria-label="ランニングを実施">
+                  <input class="breaker-input" type="checkbox" data-plan-enabled="running">
+                  <span class="breaker-panel" aria-hidden="true">
+                    <span class="breaker-box">
+                      <span class="breaker-label off">OFF</span>
+                      <span class="breaker-toggle"></span>
+                      <span class="breaker-label on">ON</span>
+                    </span>
+                    <span class="breaker-lamp">実施</span>
+                  </span>
+                  <span class="spark-burst" aria-hidden="true"></span>
+                </label>
+                <span class="inline-legend">ソフト5km / ノーマル10km / ハード20km</span>
+              </div>
+            </div>
+            <div class="level-control" role="group" aria-label="ランニング強度">
+              <button type="button" data-plan-level="running:soft">ソフト</button>
+              <button type="button" data-plan-level="running:normal">ノーマル</button>
+              <button type="button" data-plan-level="running:hard">ハード</button>
+            </div>
           </article>
         </div>
         <button class="primary-button full-button" id="generateWorkout" type="button">最適メニューの自動生成</button>
@@ -292,6 +391,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=21"></script>
+  <script src="./app.js?v=39"></script>
 </body>
 </html>
