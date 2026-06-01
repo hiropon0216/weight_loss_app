@@ -1,4 +1,5 @@
 const STORE_KEY = "weightTracker:v1";
+const BACKUP_STORE_KEY = "weightTracker:v1:backup";
 const ALPHA = 0.25;
 const MS_PER_DAY = 86400000;
 
@@ -27,6 +28,7 @@ const defaultState = {
   exerciseLogs: [],
   dailyChecks: [],
   workoutPlan: null,
+  workoutPlans: [],
   workoutHistory: [],
 };
 
@@ -37,14 +39,41 @@ let calendarMonth = selectedDate.slice(0, 7);
 function loadState() {
   try {
     const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return loadBackupState();
+    return normalizeState(JSON.parse(raw));
+  } catch {
+    return loadBackupState();
+  }
+}
+
+function loadBackupState() {
+  try {
+    const raw = localStorage.getItem(BACKUP_STORE_KEY);
     if (!raw) return structuredClone(defaultState);
-    return { ...structuredClone(defaultState), ...JSON.parse(raw) };
+    return normalizeState(JSON.parse(raw));
   } catch {
     return structuredClone(defaultState);
   }
 }
 
+function normalizeState(saved) {
+  const base = structuredClone(defaultState);
+  return {
+    ...base,
+    ...saved,
+    settings: { ...base.settings, ...(saved?.settings || {}) },
+    weightEntries: Array.isArray(saved?.weightEntries) ? saved.weightEntries : [],
+    exerciseLogs: Array.isArray(saved?.exerciseLogs) ? saved.exerciseLogs : [],
+    dailyChecks: Array.isArray(saved?.dailyChecks) ? saved.dailyChecks : [],
+    workoutPlans: Array.isArray(saved?.workoutPlans) ? saved.workoutPlans : [],
+    workoutHistory: Array.isArray(saved?.workoutHistory) ? saved.workoutHistory : [],
+    workoutPlan: saved?.workoutPlan || null,
+  };
+}
+
 function saveState() {
+  const current = localStorage.getItem(STORE_KEY);
+  if (current) localStorage.setItem(BACKUP_STORE_KEY, current);
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
   const status = document.querySelector("#saveStatus");
   status.textContent = "保存済み";
@@ -454,20 +483,47 @@ function streakDays() {
 function dailyScore(date) {
   const hasWeight = state.weightEntries.some((entry) => entry.date === date);
   const check = state.dailyChecks.find((entry) => entry.date === date);
+  let score = scoreFromCheck(check, hasWeight);
+  score += exerciseScore(date, check);
+  score = Math.max(0, score);
+  return Math.min(100, score);
+}
+
+function scoreFromCheck(check, hasWeight) {
   let score = hasWeight ? 3 : 0;
-  if (check?.exerciseDone) score += 15;
   if (check?.meal80) score += 14;
   if (check?.protein100) score += 12;
   if (check?.vegetables350) score += 8;
   if (check?.carbPortion) score += 10;
-  if (check?.noFried) score += 8;
-  if (check?.snackUnder200) score += 6;
+  if (check?.noFried) score += 7;
+  if (check?.snackUnder200) score += 5;
   if (check?.noJuiceAlcohol) score += 7;
-  if (check?.noLateSnack) score += 5;
+  if (check?.noLateSnack) score += 4;
   if (check?.noSweets) score += 8;
   if (check?.water1500) score += 4;
-  score = Math.max(0, score);
-  return Math.min(100, score);
+  return score;
+}
+
+function currentUiScore() {
+  const check = {
+    exerciseDone: document.querySelector("[data-exercise='true']")?.classList.contains("active") || false,
+  };
+  document.querySelectorAll("[data-check]").forEach((input) => {
+    check[input.dataset.check] = input.checked;
+  });
+  const hasWeight = Boolean(Number(document.querySelector("#weightInput")?.value)) ||
+    state.weightEntries.some((entry) => entry.date === selectedDate);
+  const score = scoreFromCheck(check, hasWeight) + exerciseScore(selectedDate, check);
+  return Math.max(0, Math.min(100, score));
+}
+
+function exerciseScore(date, check) {
+  if (!check?.exerciseDone) return 0;
+  const plan = getWorkoutPlanForDate(date);
+  if (!plan?.items?.length) return 9;
+  const kcal = workoutPlanKcal(plan);
+  if (kcal <= 0) return 9;
+  return Math.max(6, Math.min(18, Math.round(Math.sqrt(kcal) * 0.48)));
 }
 
 function dailyRank(date) {
@@ -589,10 +645,56 @@ function buildWorkoutPlan() {
     .filter((type) => document.querySelector(`[data-plan-enabled="${type}"]`)?.checked)
     .map((type) => {
       const level = selectedPlanLevel(type) || "normal";
-      return { type, label: labels[type], level, ...menus[type][level] };
+      const estimatedKcal = estimateWorkoutKcal(type, level);
+      return { type, label: labels[type], level, estimatedKcal, ...menus[type][level] };
     });
 
   return { date: selectedDate, items };
+}
+
+function currentBodyWeightKg() {
+  return latestTrend()?.trendKg || latestEntry()?.weightKg || state.settings.startWeightKg || 78;
+}
+
+function estimateWorkoutKcal(type, level) {
+  const kg = currentBodyWeightKg();
+  const specs = {
+    strength: {
+      soft: { met: 3.8, minutes: 15 },
+      normal: { met: 5.0, minutes: 30 },
+      hard: { met: 6.0, minutes: 60 },
+    },
+    bag: {
+      soft: { met: 5.8, minutes: 20 },
+      normal: { met: 8.5, minutes: 40 },
+      hard: { met: 10.8, minutes: 60 },
+    },
+    running: {
+      soft: { met: 8.5, minutes: 37.5 },
+      normal: { met: 8.5, minutes: 75 },
+      hard: { met: 8.5, minutes: 150 },
+    },
+  };
+  const spec = specs[type]?.[level];
+  if (!spec) return 0;
+  return Math.round((spec.met * 3.5 * kg * spec.minutes) / 200);
+}
+
+function workoutPlanKcal(plan) {
+  return (plan?.items || []).reduce((sum, item) => sum + (Number(item.estimatedKcal) || estimateWorkoutKcal(item.type, item.level)), 0);
+}
+
+function upsertWorkoutPlan(plan) {
+  state.workoutPlan = plan;
+  state.workoutPlans = [
+    ...(state.workoutPlans || []).filter((entry) => entry.date !== plan.date),
+    plan,
+  ].sort((a, b) => a.date.localeCompare(b.date)).slice(-120);
+}
+
+function getWorkoutPlanForDate(date) {
+  if (state.workoutPlan?.date === date) return state.workoutPlan;
+  return (state.workoutPlans || []).find((plan) => plan.date === date) || null;
 }
 
 function buildStrengthSteps(level, pools, countsByLevel) {
@@ -639,10 +741,9 @@ function rememberWorkoutPlan(plan) {
   ].sort((a, b) => a.date.localeCompare(b.date)).slice(-30);
 }
 
-function renderPlanInto(selector) {
+function renderPlanInto(selector, plan = state.workoutPlan) {
   const container = document.querySelector(selector);
   if (!container) return;
-  const plan = state.workoutPlan;
   if (!plan) {
     container.innerHTML = "";
     return;
@@ -655,7 +756,7 @@ function renderPlanInto(selector) {
     <h3>${plan.date.replaceAll("-", "/")} の最適メニュー</h3>
     ${plan.items.map((item) => `
       <article class="generated-item">
-        <strong>${item.label}<span>${levelLabel(item.level)} / ${escapeHtml(item.target)}</span></strong>
+        <strong>${item.label}<span>${levelLabel(item.level)} / ${escapeHtml(item.target)} / 約${item.estimatedKcal || estimateWorkoutKcal(item.type, item.level)}kcal</span></strong>
         <ul>${item.steps.map(renderWorkoutStep).join("")}</ul>
       </article>
     `).join("")}
@@ -672,14 +773,15 @@ function renderWorkoutPlan() {
 }
 
 function renderRecordWorkoutPlan() {
-  if (state.workoutPlan?.date !== selectedDate) {
+  const plan = getWorkoutPlanForDate(selectedDate);
+  if (!plan) {
     const container = document.querySelector("#recordGeneratedMenu");
     if (container) {
       container.innerHTML = `<p>この日の運動メニューはまだ自動生成されていません。運動画面で「最適メニューの自動生成」を押すと、ここにメニューが出ます。</p>`;
     }
     return;
   }
-  renderPlanInto("#recordGeneratedMenu");
+  renderPlanInto("#recordGeneratedMenu", plan);
 }
 
 function setExerciseSegment(done) {
@@ -742,6 +844,7 @@ function bindEvents() {
     state.weightEntries = state.weightEntries.filter((entry) => entry.date !== selectedDate);
     state.dailyChecks = state.dailyChecks.filter((entry) => entry.date !== selectedDate);
     if (state.workoutPlan?.date === selectedDate) state.workoutPlan = null;
+    state.workoutPlans = (state.workoutPlans || []).filter((entry) => entry.date !== selectedDate);
     saveState();
     render();
   });
@@ -788,6 +891,8 @@ function bindEvents() {
     if (input.checked) launchFoodBurn();
   });
 
+  document.querySelector("#weightInput").addEventListener("input", updateFoodBurner);
+
   document.querySelector("#exercisePlanner").addEventListener("click", (event) => {
     const button = event.target.closest("[data-plan-level]");
     if (!button) return;
@@ -802,11 +907,13 @@ function bindEvents() {
   });
 
   document.querySelector("#generateWorkout").addEventListener("click", () => {
-    state.workoutPlan = buildWorkoutPlan();
-    rememberWorkoutPlan(state.workoutPlan);
+    const plan = buildWorkoutPlan();
+    upsertWorkoutPlan(plan);
+    rememberWorkoutPlan(plan);
     saveState();
     renderWorkoutPlan();
     renderRecordWorkoutPlan();
+    updateFoodBurner();
   });
 
   document.querySelector("#exerciseSegment").addEventListener("click", (event) => {
@@ -819,7 +926,8 @@ function bindEvents() {
   document.querySelector("#resetData").addEventListener("click", () => {
     if (confirm("端末内の体重・運動データをすべて削除しますか？")) {
       state = structuredClone(defaultState);
-      saveState();
+      localStorage.removeItem(STORE_KEY);
+      localStorage.removeItem(BACKUP_STORE_KEY);
       render();
     }
   });
@@ -853,20 +961,25 @@ function updateFoodBurner() {
 
   const burner = document.querySelector("#fatBurner");
   if (!burner) return;
-  const score = checked + (exerciseDone ? 2 : 0);
-  const maxScore = inputs.length + 2;
-  const level = score === 0 ? 0 : Math.min(4, Math.ceil((score / maxScore) * 4));
+  const score = currentUiScore();
+  const level = score === 0 ? 0 : Math.min(10, Math.ceil(score / 10));
   burner.className = `fat-burner heat-${level}`;
   const text = document.querySelector("#fatBurnText");
   if (!text) return;
   const messages = [
-    "食事チェックと運動実績でランナーの燃焼ペースが上がります。",
-    "ウォームアップ。減量に効く行動が積み上がり始めています。",
-    "ジョグ燃焼中。食事と運動の流れが作れています。",
-    "ペースアップ。脂肪を落とす一日の形に近づいています。",
-    "全力燃焼。今日の食事管理と運動実績はかなり強いです。",
+    "0点です。まだ火はついていません。まずは腹八分か水分補給を記録してください。",
+    "1〜10点です。火はつきかけていますが、減量に効く行動としてはまだ弱いです。",
+    "11〜20点です。火種はありますが、記録だけで満足せず、食事の軸を整えてください。",
+    "21〜30点です。弱火で燃えています。お菓子、ジュース、主食量のどこかを見直してください。",
+    "31〜40点です。火力はまだ弱いです。脂肪を落とす日としては、食事の締まりが足りません。",
+    "41〜50点です。中火に届きそうです。最低限はできていますが、運動かたんぱく質を足してください。",
+    "51〜60点です。中火で燃えています。悪くはありませんが、減量を進めるにはもう一押し必要です。",
+    "61〜70点です。しっかり燃えています。食事の土台はできていますが、A評価にはまだ届きません。",
+    "71〜80点です。強い火力で燃えています。間食、夜食、運動の詰め方で評価が大きく変わります。",
+    "81〜90点です。高火力で燃えています。減量向きの一日ですが、S評価には小さな抜けも許されません。",
+    "91〜100点です。最大火力で燃えています。脂肪を落とす条件が高い水準でそろっています。",
   ];
-  text.textContent = `食事 ${checked}/${inputs.length}・運動 ${exerciseDone ? "実施" : "休養"} / ${messages[level]}`;
+  text.textContent = `${score}点・食事 ${checked}/${inputs.length}・運動 ${exerciseDone ? "実施" : "休養"} / ${messages[level]}`;
 }
 
 function launchFoodBurn() {

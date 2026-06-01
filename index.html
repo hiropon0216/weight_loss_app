@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4f7f5">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=39">
+  <link rel="stylesheet" href="./styles.css?v=44">
 </head>
 <body>
   <div id="app">
@@ -126,69 +126,56 @@
             <h2 id="burnSummaryTitle">燃焼サマリ</h2>
           </div>
           <div class="fat-burner heat-0" id="fatBurner" aria-live="polite">
-            <div class="runner-core" aria-hidden="true">
-              <svg class="runner-figure" viewBox="22 4 96 100" focusable="false">
+            <div class="fat-core" aria-hidden="true">
+              <svg class="fat-fire-figure" viewBox="0 0 180 110" focusable="false">
                 <defs>
-                  <linearGradient id="runnerGradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop class="g-top" offset="0" stop-color="#36d98f"/>
-                    <stop class="g-bot" offset="1" stop-color="#0e7e57"/>
+                  <radialGradient id="fatLumpGradient" cx="38%" cy="28%" r="72%">
+                    <stop offset="0" stop-color="#fff1ab"/>
+                    <stop offset="0.48" stop-color="#f0bd5d"/>
+                    <stop offset="1" stop-color="#9a5c2c"/>
                   </linearGradient>
-                  <linearGradient id="flameGradient" x1="0" x2="0" y1="1" y2="0">
-                    <stop offset="0" stop-color="#ff7a14"/>
-                    <stop offset="0.55" stop-color="#ff5a1a"/>
-                    <stop offset="1" stop-color="#ffd56b"/>
+                  <linearGradient id="flameHotGradient" x1="0" x2="0" y1="1" y2="0">
+                    <stop offset="0" stop-color="#b91c0b"/>
+                    <stop offset="0.38" stop-color="#ff5a1f"/>
+                    <stop offset="0.72" stop-color="#ffb02e"/>
+                    <stop offset="1" stop-color="#fff5ae"/>
                   </linearGradient>
                 </defs>
-                <g class="speed-pack">
-                  <line class="speed-line s1" x1="28" y1="34" x2="56" y2="34"/>
-                  <line class="speed-line s2" x1="24" y1="52" x2="54" y2="52"/>
-                  <line class="speed-line s3" x1="30" y1="70" x2="52" y2="70"/>
+                <g class="heat-haze">
+                  <path class="haze h1" d="M51 45 C43 34 60 28 52 17"/>
+                  <path class="haze h2" d="M90 42 C80 29 99 23 90 10"/>
+                  <path class="haze h3" d="M130 45 C121 33 139 28 131 15"/>
+                </g>
+                <g class="fat-lump">
+                  <path class="fat-main" d="M49 45 C53 28 72 24 85 32 C96 18 120 25 124 43 C143 44 153 59 147 73 C141 88 119 88 106 81 C96 93 72 91 65 78 C51 80 39 72 40 60 C40 54 43 49 49 45Z" fill="url(#fatLumpGradient)"/>
+                  <path class="fat-gloss" d="M64 43 C70 35 80 34 86 39" />
+                  <circle class="fat-pore p1" cx="75" cy="55" r="3"/>
+                  <circle class="fat-pore p2" cx="105" cy="50" r="2.7"/>
+                  <circle class="fat-pore p3" cx="94" cy="69" r="2.5"/>
                 </g>
                 <g class="flame-pack">
-                  <path class="flame f1" fill="url(#flameGradient)" d="M46 100 C39 91 44 83 46 77 C51 84 53 92 48 99 C47 100 46 100 46 100Z"/>
-                  <path class="flame f2" fill="url(#flameGradient)" d="M37 99 C32 92 36 86 38 82 C42 87 44 92 40 98 C39 99 38 99 37 99Z"/>
-                  <path class="flame f3" fill="url(#flameGradient)" d="M55 98 C51 92 54 87 56 83 C59 88 60 92 57 97 C56 98 55 98 55 98Z"/>
+                  <path class="flame f1" fill="url(#flameHotGradient)" d="M56 101 C37 85 47 64 61 50 C60 67 82 77 67 100Z"/>
+                  <path class="flame f2" fill="url(#flameHotGradient)" d="M90 103 C67 84 82 58 96 38 C100 59 123 78 105 102Z"/>
+                  <path class="flame f3" fill="url(#flameHotGradient)" d="M124 101 C107 83 119 66 134 51 C133 68 149 82 137 100Z"/>
+                  <path class="flame f4" fill="url(#flameHotGradient)" d="M75 103 C63 91 70 78 80 69 C80 82 95 91 86 103Z"/>
+                  <path class="flame f5" fill="url(#flameHotGradient)" d="M112 103 C101 91 106 79 117 68 C118 82 130 92 123 103Z"/>
                 </g>
-                <ellipse class="runner-shadow" cx="84" cy="99" rx="34" ry="5.5"/>
-                <g class="runner-body">
-                  <g class="limbs-far">
-                    <g class="frame-a">
-                      <polyline class="limb leg" stroke="url(#runnerGradient)" points="78,58 67,69 57,83 49,84"/>
-                      <polyline class="limb arm" stroke="url(#runnerGradient)" points="91,32 103,39 100,27"/>
-                    </g>
-                    <g class="frame-p">
-                      <polyline class="limb leg" stroke="url(#runnerGradient)" points="78,58 75,73 73,89 82,91"/>
-                      <polyline class="limb arm" stroke="url(#runnerGradient)" points="91,32 86,43 92,51"/>
-                    </g>
-                    <g class="frame-b">
-                      <polyline class="limb leg" stroke="url(#runnerGradient)" points="78,58 93,63 96,82 105,84"/>
-                      <polyline class="limb arm" stroke="url(#runnerGradient)" points="91,32 81,43 88,53"/>
-                    </g>
-                  </g>
-                  <path class="torso" fill="url(#runnerGradient)" d="M86 28 L95 33 L82 60 L72 55 Z"/>
-                  <circle class="head" fill="url(#runnerGradient)" cx="95" cy="18" r="8"/>
-                  <g class="limbs-near">
-                    <g class="frame-a">
-                      <polyline class="limb leg" stroke="url(#runnerGradient)" points="78,58 93,63 96,82 105,84"/>
-                      <polyline class="limb arm" stroke="url(#runnerGradient)" points="91,32 81,43 88,53"/>
-                    </g>
-                    <g class="frame-p">
-                      <polyline class="limb leg" stroke="url(#runnerGradient)" points="78,58 82,71 77,85 86,87"/>
-                      <polyline class="limb arm" stroke="url(#runnerGradient)" points="91,32 95,43 91,33"/>
-                    </g>
-                    <g class="frame-b">
-                      <polyline class="limb leg" stroke="url(#runnerGradient)" points="78,58 67,69 57,83 49,84"/>
-                      <polyline class="limb arm" stroke="url(#runnerGradient)" points="91,32 103,39 100,27"/>
-                    </g>
-                  </g>
+                <g class="grill">
+                  <path d="M36 93 H150"/>
+                  <path d="M45 84 H141"/>
+                  <path d="M55 84 L48 101"/>
+                  <path d="M82 84 L78 103"/>
+                  <path d="M110 84 L114 103"/>
+                  <path d="M136 84 L144 101"/>
                 </g>
-                <g class="sweat-pack">
-                  <circle class="sweat-drop d1" cx="103" cy="20" r="2.2"/>
-                  <circle class="sweat-drop d2" cx="99" cy="13" r="1.7"/>
+                <g class="embers">
+                  <circle class="ember e1" cx="49" cy="93" r="2"/>
+                  <circle class="ember e2" cx="92" cy="96" r="1.8"/>
+                  <circle class="ember e3" cx="134" cy="91" r="2.2"/>
                 </g>
               </svg>
             </div>
-            <p id="fatBurnText">食事チェックと運動実績でランナーの燃焼ペースが上がります。</p>
+            <p id="fatBurnText">食事チェックと運動実績で脂肪を炙る火力が上がります。</p>
           </div>
         </section>
 
@@ -391,6 +378,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=39"></script>
+  <script src="./app.js?v=44"></script>
 </body>
 </html>
