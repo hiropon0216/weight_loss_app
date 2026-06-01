@@ -88,6 +88,7 @@ function migrateDailyCheck(entry) {
     noJuiceAlcohol: Boolean(entry.noJuiceAlcohol || entry.noAlcoholSweets),
     noSweets: Boolean(entry.noSweets || entry.noAlcoholSweets),
     noLateSnack: Boolean(entry.noLateSnack),
+    water1500: Boolean(entry.water1500),
     note: typeof entry.note === "string" ? entry.note : "",
   };
 }
@@ -502,6 +503,7 @@ function getSelectedCheck() {
       noJuiceAlcohol: false,
       noSweets: false,
       noLateSnack: false,
+      water1500: false,
       note: "",
     };
     state.dailyChecks.push(check);
@@ -512,7 +514,7 @@ function getSelectedCheck() {
 const CHECK_FIELDS = [
   "exerciseDone",
   "protein100", "vegetables350", "carbPortion", "noFried",
-  "noJuiceAlcohol", "noSweets", "noLateSnack",
+  "noJuiceAlcohol", "noSweets", "noLateSnack", "water1500",
 ];
 
 function checkHasData(entry) {
@@ -566,8 +568,9 @@ function scoreFromCheck(check) {
   if (check?.carbPortion) score += 15;
   if (check?.noFried) score += 14;
   if (check?.protein100) score += 8;
-  if (check?.noLateSnack) score += 6;
-  if (check?.vegetables350) score += 4;
+  if (check?.noLateSnack) score += 4;
+  if (check?.vegetables350) score += 3;
+  if (check?.water1500) score += 3;
   return score;
 }
 
@@ -851,55 +854,57 @@ function renderExerciseMotivation() {
   const container = document.querySelector("#exerciseMotivationPanel");
   if (!container) return;
   const streak = exerciseStreak(selectedDate);
-  const boss = weeklyBossProgress(selectedDate);
+  const burn = weeklyBurnProgress(selectedDate);
   const milestone = nextStreakMilestone(streak.count);
+  const streakLevel = streak.count >= 7 ? "level-3" : streak.count >= 3 ? "level-2" : streak.count >= 1 ? "level-1" : "level-0";
   const streakTitle = streak.count ? `${streak.count}日継続中` : "継続記録はまだ始まっていません";
   const streakMessage = streak.count
     ? `${streak.restDays ? `計画休養${streak.restDays}日を含めて、` : ""}運動リズムを維持できています。次は${milestone}日継続を狙いましょう。`
     : "運動を実施するか、休養用の空メニューを作って保存すると継続記録が始まります。";
-  const hpRate = Math.max(0, Math.min(100, (boss.remaining / WEEKLY_BOSS_HP) * 100));
-  const damageRate = Math.max(0, Math.min(100, (boss.damage / WEEKLY_BOSS_HP) * 100));
-  const bossPhase = boss.remaining <= 0 ? "defeated" : hpRate <= 25 ? "phase-critical" : hpRate <= 55 ? "phase-damaged" : "phase-healthy";
-  const bossMessage = boss.remaining <= 0
-    ? "今週のボスは撃破済みです。ここから先の運動はボーナスダメージです。"
-    : `あと${boss.remaining}kcal分の運動で今週のボスを撃破できます。`;
+  const remainingRate = Math.max(0, Math.min(100, (burn.remaining / WEEKLY_BOSS_HP) * 100));
+  const burnRate = Math.max(0, Math.min(100, (burn.total / WEEKLY_BOSS_HP) * 100));
+  const burnPhase = burn.remaining <= 0 ? "defeated" : remainingRate <= 25 ? "phase-critical" : remainingRate <= 55 ? "phase-damaged" : "phase-healthy";
+  const burnMessage = burn.remaining <= 0
+    ? "今週の燃焼目標を達成しました。ここから先の運動は上積みです。"
+    : `今週の目標まであと${burn.remaining}kcalです。`;
 
   container.innerHTML = `
     <article class="streak-panel">
-      <div>
-        <span class="panel-label">TRAINING STREAK</span>
-        <strong>${escapeHtml(streakTitle)}</strong>
-        <p>${escapeHtml(streakMessage)}</p>
-      </div>
-      <div class="streak-flame" aria-hidden="true">${streak.count >= 14 ? "14" : streak.count >= 7 ? "7" : streak.count >= 3 ? "3" : streak.count || "0"}</div>
-    </article>
-    <article class="boss-panel ${bossPhase}">
-      <div class="boss-head">
+      <div class="motivation-head">
         <div>
-          <span class="panel-label">WEEKLY BOSS</span>
-          <strong>脂肪ボス HP ${boss.remaining}/${WEEKLY_BOSS_HP}</strong>
+          <span class="panel-label">TRAINING STREAK</span>
+          <strong>${escapeHtml(streakTitle)}</strong>
         </div>
-        <span>${escapeHtml(boss.rangeLabel)}</span>
       </div>
-      <div class="boss-arena" aria-hidden="true">
-        <div class="boss-sprite">
-          <span class="boss-horn left"></span>
-          <span class="boss-horn right"></span>
-          <span class="boss-eye left"></span>
-          <span class="boss-eye right"></span>
-          <span class="boss-mouth"></span>
-          <span class="boss-crack c1"></span>
-          <span class="boss-crack c2"></span>
+      <div class="streak-counter ${streakLevel}" aria-label="運動継続日数 ${streak.count}日">
+        <span>継続日数</span>
+        <strong>${streak.count}</strong>
+        <small>日</small>
+      </div>
+      <p>${escapeHtml(streakMessage)}</p>
+    </article>
+    <article class="boss-panel ${burnPhase}">
+      <div class="motivation-head">
+        <div>
+          <span class="panel-label">WEEKLY BURN</span>
+          <strong>残り ${burn.remaining} kcal</strong>
         </div>
-        <div class="damage-burst">-${boss.damage}</div>
+        <span>${escapeHtml(burn.rangeLabel)}</span>
       </div>
-      <div class="boss-track" aria-label="週間ボスHP">
-        <span style="width: ${hpRate}%"></span>
+      <div class="boss-gauge-card" aria-label="週間燃焼ゲージ">
+        <div class="boss-gauge-head">
+          <span>今週の燃焼</span>
+          <strong>${burn.total}<small>kcal</small></strong>
+        </div>
+        <div class="boss-gauge" aria-hidden="true">
+          <span style="width: ${burnRate}%"></span>
+        </div>
+        <div class="boss-gauge-foot">
+          <span>0</span>
+          <span>${WEEKLY_BOSS_HP}kcal</span>
+        </div>
       </div>
-      <div class="damage-track" aria-label="今週の運動ダメージ">
-        <span style="width: ${damageRate}%"></span>
-      </div>
-      <p>${escapeHtml(bossMessage)} 今週の累計ダメージは${boss.damage}kcalです。</p>
+      <p>${escapeHtml(burnMessage)} 今週の累計燃焼は${burn.total}kcalです。</p>
     </article>
   `;
 }
@@ -931,17 +936,17 @@ function nextStreakMilestone(count) {
   return [3, 7, 14, 30, 60, 100].find((day) => day > count) || count + 50;
 }
 
-function weeklyBossProgress(anchorDate) {
+function weeklyBurnProgress(anchorDate) {
   const start = weekStart(anchorDate);
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
-  let damage = 0;
+  let total = 0;
   for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
-    damage += exerciseDamageForDate(toIsoDate(cursor));
+    total += exerciseBurnForDate(toIsoDate(cursor));
   }
-  const remaining = Math.max(0, WEEKLY_BOSS_HP - damage);
+  const remaining = Math.max(0, WEEKLY_BOSS_HP - total);
   return {
-    damage,
+    total,
     remaining,
     rangeLabel: `${toIsoDate(start).replaceAll("-", "/")} - ${toIsoDate(end).replaceAll("-", "/")}`,
   };
@@ -955,7 +960,7 @@ function weekStart(dateIso) {
   return date;
 }
 
-function exerciseDamageForDate(date) {
+function exerciseBurnForDate(date) {
   const check = state.dailyChecks.find((entry) => entry.date === date);
   if (!check?.exerciseDone) return 0;
   const plan = getWorkoutPlanForDate(date);

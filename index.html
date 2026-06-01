@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=56">
+  <link rel="stylesheet" href="./styles.css?v=59">
 </head>
 <body>
   <div id="app">
@@ -22,7 +22,7 @@
       <section class="view active" id="view-today" aria-label="記録">
         <div class="record-header">
           <span>記録</span>
-          <small>ver 1.01</small>
+          <small>ver 1.02 Must/Plus・週間燃焼・継続演出</small>
         </div>
         <div class="hero-panel game-panel">
           <div>
@@ -111,14 +111,29 @@
           <div class="section-head">
             <h2>食事チェック</h2>
           </div>
-          <div class="check-grid" id="dailyChecks">
-            <label><input type="checkbox" data-check="protein100"> たんぱく質100g</label>
-            <label><input type="checkbox" data-check="carbPortion"> 米・麺・パンは1食150gまで</label>
-            <label><input type="checkbox" data-check="noFried"> 揚げ物なし</label>
-            <label><input type="checkbox" data-check="noSweets"> お菓子なし</label>
-            <label><input type="checkbox" data-check="noJuiceAlcohol"> 酒・ジュースなし</label>
-            <label><input type="checkbox" data-check="noLateSnack"> 21時以降の食事なし</label>
-            <label><input type="checkbox" data-check="vegetables350"> 野菜を摂取</label>
+          <div id="dailyChecks">
+            <div class="check-block">
+              <div class="check-subhead">
+                <h3>Must</h3>
+              </div>
+              <div class="check-grid">
+                <label><input type="checkbox" data-check="noSweets"><span class="check-text">お菓子なし</span></label>
+                <label><input type="checkbox" data-check="noJuiceAlcohol"><span class="check-text">酒・ジュースなし</span></label>
+                <label><input type="checkbox" data-check="carbPortion"><span class="check-text">米・麺・パンは1食150gまで</span></label>
+                <label><input type="checkbox" data-check="noFried"><span class="check-text">揚げ物なし</span></label>
+              </div>
+            </div>
+            <div class="check-block">
+              <div class="check-subhead">
+                <h3>Plus</h3>
+              </div>
+              <div class="check-grid">
+                <label><input type="checkbox" data-check="protein100"><span class="check-text">たんぱく質100g</span></label>
+                <label><input type="checkbox" data-check="noLateSnack"><span class="check-text">21時以降の食事なし</span></label>
+                <label><input type="checkbox" data-check="vegetables350"><span class="check-text">野菜を摂取</span></label>
+                <label><input type="checkbox" data-check="water1500"><span class="check-text">水・お茶1.5L以上</span></label>
+              </div>
+            </div>
           </div>
           <textarea id="dailyNote" rows="3" placeholder="体調、睡眠、外食など"></textarea>
         </section>
@@ -382,6 +397,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=56"></script>
+  <script src="./app.js?v=59"></script>
 </body>
 </html>
