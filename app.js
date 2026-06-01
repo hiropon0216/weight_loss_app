@@ -38,6 +38,7 @@ let selectedDate = todayIso();
 let calendarMonth = selectedDate.slice(0, 7);
 let saveStatusTimer = null;
 let settingsFeedbackTimer = null;
+let workoutFeedbackTimer = null;
 
 function loadState() {
   try {
@@ -107,6 +108,29 @@ function showSettingsSavedFeedback() {
     button.textContent = "設定を保存";
     button.classList.remove("saved");
   }, 2200);
+}
+
+function showWorkoutGeneratedFeedback(plan) {
+  const feedback = document.querySelector("#workoutFeedback");
+  const button = document.querySelector("#generateWorkout");
+  const menu = document.querySelector("#exerciseGeneratedMenu");
+  if (!feedback || !button) return;
+  const kcal = workoutPlanKcal(plan);
+  const date = plan.date.replaceAll("-", "/");
+  feedback.textContent = plan.items.length
+    ? `${date} の最適メニューを生成しました。${plan.items.length}種目で約${kcal}kcalを削ります。記録画面にも反映済みです。`
+    : `${date} の休養メニューを生成しました。実施する種目をONにすると、運動メニューを作れます。`;
+  feedback.classList.add("active");
+  button.textContent = "生成しました";
+  button.classList.add("saved");
+  menu?.classList.add("just-generated");
+  if (workoutFeedbackTimer) clearTimeout(workoutFeedbackTimer);
+  workoutFeedbackTimer = setTimeout(() => {
+    feedback.classList.remove("active");
+    button.textContent = "最適メニューの自動生成";
+    button.classList.remove("saved");
+    menu?.classList.remove("just-generated");
+  }, 2600);
 }
 
 function sortedWeights() {
@@ -779,7 +803,10 @@ function renderPlanInto(selector, plan = state.workoutPlan) {
     return;
   }
   if (!plan.items.length) {
-    container.innerHTML = `<p>実施する種目をONにすると、ここにメニューが出ます。</p>`;
+    container.innerHTML = `
+      <h3>${plan.date.replaceAll("-", "/")} の休養メニュー</h3>
+      <p>この日は休養として保存しました。実施する種目をONにして再生成すると、運動メニューに更新できます。</p>
+    `;
     return;
   }
   container.innerHTML = `
@@ -1062,6 +1089,7 @@ function bindEvents() {
     renderExerciseMotivation();
     renderRecordWorkoutPlan();
     updateFoodBurner();
+    showWorkoutGeneratedFeedback(plan);
   });
 
   document.querySelector("#exerciseSegment").addEventListener("click", (event) => {
