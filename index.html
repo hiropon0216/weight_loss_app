@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=48">
+  <link rel="stylesheet" href="./styles.css?v=50">
 </head>
 <body>
   <div id="app">
@@ -345,7 +345,8 @@
             <label for="goalDate">期限</label>
             <input id="goalDate" type="date" required>
           </div>
-          <button class="primary-button" type="submit">設定を保存</button>
+          <button class="primary-button settings-save-button" id="saveSettingsButton" type="submit">設定を保存</button>
+          <p class="settings-feedback" id="settingsFeedback" aria-live="polite"></p>
         </form>
 
         <div class="metric-grid">
@@ -383,6 +384,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=48"></script>
+  <script src="./app.js?v=50"></script>
 </body>
 </html>

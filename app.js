@@ -36,6 +36,8 @@ const defaultState = {
 let state = loadState();
 let selectedDate = todayIso();
 let calendarMonth = selectedDate.slice(0, 7);
+let saveStatusTimer = null;
+let settingsFeedbackTimer = null;
 
 function loadState() {
   try {
@@ -72,13 +74,39 @@ function normalizeState(saved) {
   };
 }
 
-function saveState() {
+function saveState(message = "保存済み") {
   const current = localStorage.getItem(STORE_KEY);
   if (current) localStorage.setItem(BACKUP_STORE_KEY, current);
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  showSaveStatus(message);
+}
+
+function showSaveStatus(message = "保存済み") {
   const status = document.querySelector("#saveStatus");
-  status.textContent = "保存済み";
-  setTimeout(() => { status.textContent = "端末内保存"; }, 1200);
+  if (!status) return;
+  status.textContent = message;
+  status.classList.add("saved");
+  if (saveStatusTimer) clearTimeout(saveStatusTimer);
+  saveStatusTimer = setTimeout(() => {
+    status.textContent = "端末内保存";
+    status.classList.remove("saved");
+  }, 1600);
+}
+
+function showSettingsSavedFeedback() {
+  const feedback = document.querySelector("#settingsFeedback");
+  const button = document.querySelector("#saveSettingsButton");
+  if (!feedback || !button) return;
+  feedback.textContent = "設定を保存しました。目標とBMI指標を更新済みです。";
+  feedback.classList.add("active");
+  button.textContent = "保存しました";
+  button.classList.add("saved");
+  if (settingsFeedbackTimer) clearTimeout(settingsFeedbackTimer);
+  settingsFeedbackTimer = setTimeout(() => {
+    feedback.classList.remove("active");
+    button.textContent = "設定を保存";
+    button.classList.remove("saved");
+  }, 2200);
 }
 
 function sortedWeights() {
@@ -998,8 +1026,9 @@ function bindEvents() {
     state.settings.startWeightKg = Number(document.querySelector("#startWeight").value);
     state.settings.goalWeightKg = Number(document.querySelector("#goalWeight").value);
     state.settings.goalDate = document.querySelector("#goalDate").value;
-    saveState();
+    saveState("設定保存済み");
     render();
+    showSettingsSavedFeedback();
   });
 
   document.querySelector("#dailyChecks").addEventListener("change", (event) => {
