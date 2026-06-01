@@ -2,6 +2,7 @@ const STORE_KEY = "weightTracker:v1";
 const BACKUP_STORE_KEY = "weightTracker:v1:backup";
 const ALPHA = 0.25;
 const MS_PER_DAY = 86400000;
+const WEEKLY_BOSS_HP = 2000;
 
 const toIsoDate = (date) => {
   const year = date.getFullYear();
@@ -229,6 +230,7 @@ function renderToday() {
   updateFoodBurner();
   document.querySelector("#dailyNote").value = checks.note || "";
   setRankBadge(document.querySelector("#dailyRank"), dailyRank(selectedDate));
+  renderExerciseMotivation();
   renderRecordWorkoutPlan();
 }
 
@@ -784,6 +786,122 @@ function renderRecordWorkoutPlan() {
   renderPlanInto("#recordGeneratedMenu", plan);
 }
 
+function renderExerciseMotivation() {
+  const container = document.querySelector("#exerciseMotivationPanel");
+  if (!container) return;
+  const streak = exerciseStreak(selectedDate);
+  const boss = weeklyBossProgress(selectedDate);
+  const milestone = nextStreakMilestone(streak.count);
+  const streakTitle = streak.count ? `${streak.count}日継続中` : "継続記録はまだ始まっていません";
+  const streakMessage = streak.count
+    ? `${streak.restDays ? `計画休養${streak.restDays}日を含めて、` : ""}運動リズムを維持できています。次は${milestone}日継続を狙いましょう。`
+    : "運動を実施するか、休養用の空メニューを作って保存すると継続記録が始まります。";
+  const hpRate = Math.max(0, Math.min(100, (boss.remaining / WEEKLY_BOSS_HP) * 100));
+  const damageRate = Math.max(0, Math.min(100, (boss.damage / WEEKLY_BOSS_HP) * 100));
+  const bossPhase = boss.remaining <= 0 ? "defeated" : hpRate <= 25 ? "phase-critical" : hpRate <= 55 ? "phase-damaged" : "phase-healthy";
+  const bossMessage = boss.remaining <= 0
+    ? "今週のボスは撃破済みです。ここから先の運動はボーナスダメージです。"
+    : `あと${boss.remaining}kcal分の運動で今週のボスを撃破できます。`;
+
+  container.innerHTML = `
+    <article class="streak-panel">
+      <div>
+        <span class="panel-label">TRAINING STREAK</span>
+        <strong>${escapeHtml(streakTitle)}</strong>
+        <p>${escapeHtml(streakMessage)}</p>
+      </div>
+      <div class="streak-flame" aria-hidden="true">${streak.count >= 14 ? "14" : streak.count >= 7 ? "7" : streak.count >= 3 ? "3" : streak.count || "0"}</div>
+    </article>
+    <article class="boss-panel ${bossPhase}">
+      <div class="boss-head">
+        <div>
+          <span class="panel-label">WEEKLY BOSS</span>
+          <strong>脂肪ボス HP ${boss.remaining}/${WEEKLY_BOSS_HP}</strong>
+        </div>
+        <span>${escapeHtml(boss.rangeLabel)}</span>
+      </div>
+      <div class="boss-arena" aria-hidden="true">
+        <div class="boss-sprite">
+          <span class="boss-horn left"></span>
+          <span class="boss-horn right"></span>
+          <span class="boss-eye left"></span>
+          <span class="boss-eye right"></span>
+          <span class="boss-mouth"></span>
+          <span class="boss-crack c1"></span>
+          <span class="boss-crack c2"></span>
+        </div>
+        <div class="damage-burst">-${boss.damage}</div>
+      </div>
+      <div class="boss-track" aria-label="週間ボスHP">
+        <span style="width: ${hpRate}%"></span>
+      </div>
+      <div class="damage-track" aria-label="今週の運動ダメージ">
+        <span style="width: ${damageRate}%"></span>
+      </div>
+      <p>${escapeHtml(bossMessage)} 今週の累計ダメージは${boss.damage}kcalです。</p>
+    </article>
+  `;
+}
+
+function exerciseStreak(anchorDate) {
+  let count = 0;
+  let restDays = 0;
+  const cursor = new Date(`${anchorDate}T00:00:00`);
+  while (true) {
+    const date = toIsoDate(cursor);
+    const status = exerciseStreakStatus(date);
+    if (!status.ok) break;
+    count += 1;
+    if (status.type === "rest") restDays += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return { count, restDays };
+}
+
+function exerciseStreakStatus(date) {
+  const check = state.dailyChecks.find((entry) => entry.date === date);
+  if (check?.exerciseDone) return { ok: true, type: "exercise" };
+  const plan = getWorkoutPlanForDate(date);
+  if (check && plan && !plan.items.length && !check.exerciseDone) return { ok: true, type: "rest" };
+  return { ok: false, type: "none" };
+}
+
+function nextStreakMilestone(count) {
+  return [3, 7, 14, 30, 60, 100].find((day) => day > count) || count + 50;
+}
+
+function weeklyBossProgress(anchorDate) {
+  const start = weekStart(anchorDate);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  let damage = 0;
+  for (const cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+    damage += exerciseDamageForDate(toIsoDate(cursor));
+  }
+  const remaining = Math.max(0, WEEKLY_BOSS_HP - damage);
+  return {
+    damage,
+    remaining,
+    rangeLabel: `${toIsoDate(start).replaceAll("-", "/")} - ${toIsoDate(end).replaceAll("-", "/")}`,
+  };
+}
+
+function weekStart(dateIso) {
+  const date = new Date(`${dateIso}T00:00:00`);
+  const day = date.getDay();
+  const offset = (day + 6) % 7;
+  date.setDate(date.getDate() - offset);
+  return date;
+}
+
+function exerciseDamageForDate(date) {
+  const check = state.dailyChecks.find((entry) => entry.date === date);
+  if (!check?.exerciseDone) return 0;
+  const plan = getWorkoutPlanForDate(date);
+  if (plan?.items?.length) return workoutPlanKcal(plan);
+  return 250;
+}
+
 function setExerciseSegment(done) {
   document.querySelectorAll("[data-exercise]").forEach((button) => {
     button.classList.toggle("active", button.dataset.exercise === String(done));
@@ -912,6 +1030,7 @@ function bindEvents() {
     rememberWorkoutPlan(plan);
     saveState();
     renderWorkoutPlan();
+    renderExerciseMotivation();
     renderRecordWorkoutPlan();
     updateFoodBurner();
   });

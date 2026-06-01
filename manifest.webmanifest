@@ -4,8 +4,8 @@
   "description": "実測体重ではなくトレンド体重を主役にした体重管理PWA",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#eef5f1",
-  "theme_color": "#eef5f1",
+  "background_color": "#111426",
+  "theme_color": "#111426",
   "icons": [
     {
       "src": "./icon.svg",

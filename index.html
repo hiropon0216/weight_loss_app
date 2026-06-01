@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#f4f7f5">
+  <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=44">
+  <link rel="stylesheet" href="./styles.css?v=48">
 </head>
 <body>
   <div id="app">
@@ -20,6 +20,10 @@
 
     <main>
       <section class="view active" id="view-today" aria-label="記録">
+        <div class="record-header">
+          <span>記録</span>
+          <small>ver 1.00</small>
+        </div>
         <div class="hero-panel game-panel">
           <div>
             <p class="panel-label">TREND WEIGHT</p>
@@ -99,6 +103,7 @@
             <button type="button" data-exercise="false">休養</button>
             <button type="button" data-exercise="true">実施</button>
           </div>
+          <div class="exercise-motivation" id="exerciseMotivationPanel" aria-live="polite"></div>
           <div class="generated-menu" id="recordGeneratedMenu"></div>
         </section>
 
@@ -378,6 +383,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=44"></script>
+  <script src="./app.js?v=48"></script>
 </body>
 </html>
