@@ -62,16 +62,33 @@ function loadBackupState() {
 
 function normalizeState(saved) {
   const base = structuredClone(defaultState);
+  const dailyChecks = Array.isArray(saved?.dailyChecks) ? saved.dailyChecks.map(migrateDailyCheck) : [];
   return {
     ...base,
     ...saved,
     settings: { ...base.settings, ...(saved?.settings || {}) },
     weightEntries: Array.isArray(saved?.weightEntries) ? saved.weightEntries : [],
     exerciseLogs: Array.isArray(saved?.exerciseLogs) ? saved.exerciseLogs : [],
-    dailyChecks: Array.isArray(saved?.dailyChecks) ? saved.dailyChecks : [],
+    dailyChecks,
     workoutPlans: Array.isArray(saved?.workoutPlans) ? saved.workoutPlans : [],
     workoutHistory: Array.isArray(saved?.workoutHistory) ? saved.workoutHistory : [],
     workoutPlan: saved?.workoutPlan || null,
+  };
+}
+
+function migrateDailyCheck(entry) {
+  if (!entry || typeof entry !== "object") return entry;
+  return {
+    date: entry.date,
+    exerciseDone: Boolean(entry.exerciseDone),
+    protein100: Boolean(entry.protein100),
+    vegetables350: Boolean(entry.vegetables350 || entry.vegetablesFiber),
+    carbPortion: Boolean(entry.carbPortion || entry.lunchCarbPortion || entry.dinnerCarbPortion),
+    noFried: Boolean(entry.noFried || entry.noHighFat || entry.lunchNoFried || entry.dinnerNoFried),
+    noJuiceAlcohol: Boolean(entry.noJuiceAlcohol || entry.noAlcoholSweets),
+    noSweets: Boolean(entry.noSweets || entry.noAlcoholSweets),
+    noLateSnack: Boolean(entry.noLateSnack),
+    note: typeof entry.note === "string" ? entry.note : "",
   };
 }
 
@@ -351,12 +368,7 @@ function renderWeeklySummary() {
   for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
     const date = toIsoDate(cursor);
     const hasRecord = state.weightEntries.some((entry) => entry.date === date);
-    const hasCheck = state.dailyChecks.some((entry) =>
-        entry.date === date && (
-        entry.exerciseDone || entry.meal80 || entry.protein100 || entry.vegetables350 || entry.carbPortion || entry.noFried ||
-        entry.snackUnder200 || entry.noJuiceAlcohol || entry.noLateSnack || entry.noSweets || entry.water1500 || entry.note
-      )
-    );
+    const hasCheck = state.dailyChecks.some((entry) => entry.date === date && checkHasData(entry));
     if (hasRecord || hasCheck) scores.push(dailyScore(date));
   }
 
@@ -483,16 +495,13 @@ function getSelectedCheck() {
     check = {
       date,
       exerciseDone: false,
-      meal80: false,
       protein100: false,
       vegetables350: false,
       carbPortion: false,
       noFried: false,
-      snackUnder200: false,
       noJuiceAlcohol: false,
-      noLateSnack: false,
       noSweets: false,
-      water1500: false,
+      noLateSnack: false,
       note: "",
     };
     state.dailyChecks.push(check);
@@ -500,12 +509,20 @@ function getSelectedCheck() {
   return check;
 }
 
+const CHECK_FIELDS = [
+  "exerciseDone",
+  "protein100", "vegetables350", "carbPortion", "noFried",
+  "noJuiceAlcohol", "noSweets", "noLateSnack",
+];
+
+function checkHasData(entry) {
+  if (!entry) return false;
+  if (entry.note) return true;
+  return CHECK_FIELDS.some((field) => entry[field]);
+}
+
 function hasSelectedCheckData() {
-  const check = state.dailyChecks.find((entry) => entry.date === selectedDate);
-  return Boolean(check && (
-    check.exerciseDone || check.meal80 || check.protein100 || check.vegetables350 || check.carbPortion || check.noFried ||
-    check.snackUnder200 || check.noJuiceAlcohol || check.noLateSnack || check.noSweets || check.water1500 || check.note
-  ));
+  return checkHasData(state.dailyChecks.find((entry) => entry.date === selectedDate));
 }
 
 function saveDailyChecks() {
@@ -535,26 +552,22 @@ function streakDays() {
 }
 
 function dailyScore(date) {
-  const hasWeight = state.weightEntries.some((entry) => entry.date === date);
   const check = state.dailyChecks.find((entry) => entry.date === date);
-  let score = scoreFromCheck(check, hasWeight);
+  let score = scoreFromCheck(check);
   score += exerciseScore(date, check);
   score = Math.max(0, score);
   return Math.min(100, score);
 }
 
-function scoreFromCheck(check, hasWeight) {
-  let score = hasWeight ? 3 : 0;
-  if (check?.meal80) score += 14;
-  if (check?.protein100) score += 12;
-  if (check?.vegetables350) score += 8;
-  if (check?.carbPortion) score += 10;
-  if (check?.noFried) score += 7;
-  if (check?.snackUnder200) score += 5;
-  if (check?.noJuiceAlcohol) score += 7;
-  if (check?.noLateSnack) score += 4;
-  if (check?.noSweets) score += 8;
-  if (check?.water1500) score += 4;
+function scoreFromCheck(check) {
+  let score = 0;
+  if (check?.noSweets) score += 18;
+  if (check?.noJuiceAlcohol) score += 17;
+  if (check?.carbPortion) score += 15;
+  if (check?.noFried) score += 14;
+  if (check?.protein100) score += 8;
+  if (check?.noLateSnack) score += 6;
+  if (check?.vegetables350) score += 4;
   return score;
 }
 
@@ -565,9 +578,7 @@ function currentUiScore() {
   document.querySelectorAll("[data-check]").forEach((input) => {
     check[input.dataset.check] = input.checked;
   });
-  const hasWeight = Boolean(Number(document.querySelector("#weightInput")?.value)) ||
-    state.weightEntries.some((entry) => entry.date === selectedDate);
-  const score = scoreFromCheck(check, hasWeight) + exerciseScore(selectedDate, check);
+  const score = scoreFromCheck(check) + exerciseScore(selectedDate, check);
   return Math.max(0, Math.min(100, score));
 }
 
@@ -604,12 +615,7 @@ function setRankBadge(element, rank) {
 function calendarScoreEntries() {
   const dates = new Set([
     ...state.weightEntries.map((entry) => entry.date),
-    ...state.dailyChecks
-      .filter((entry) =>
-        entry.exerciseDone || entry.meal80 || entry.protein100 || entry.vegetables350 || entry.carbPortion || entry.noFried ||
-        entry.snackUnder200 || entry.noJuiceAlcohol || entry.noLateSnack || entry.noSweets || entry.water1500 || entry.note
-      )
-      .map((entry) => entry.date),
+    ...state.dailyChecks.filter(checkHasData).map((entry) => entry.date),
   ]);
   return [...dates].map((date) => ({ date, score: dailyScore(date), rank: dailyRank(date) })).filter((entry) => entry.score > 0);
 }
@@ -1143,7 +1149,7 @@ function updateFoodBurner() {
   const text = document.querySelector("#fatBurnText");
   if (!text) return;
   const messages = [
-    "0点です。まだ火はついていません。まずは腹八分か水分補給を記録してください。",
+    "0点です。まだ火はついていません。まずはたんぱく質か21時以降の食事なしを記録してください。",
     "1〜10点です。火はつきかけていますが、減量に効く行動としてはまだ弱いです。",
     "11〜20点です。火種はありますが、記録だけで満足せず、食事の軸を整えてください。",
     "21〜30点です。弱火で燃えています。お菓子、ジュース、主食量のどこかを見直してください。",
