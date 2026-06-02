@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=61">
+  <link rel="stylesheet" href="./styles.css?v=62">
 </head>
 <body>
   <div id="app">
@@ -21,7 +21,7 @@
       <section class="view active" id="view-today" aria-label="記録">
         <div class="record-header">
           <span>記録</span>
-          <small>ver 1.03 安全目標ガード・週間評価適正化・日付補正（最終更新 2026-06-02）</small>
+          <small>ver 1.04 筋トレ自動提案を刷新：上下分割×週次バランス（最終更新 2026-06-02）</small>
         </div>
         <div class="hero-panel game-panel">
           <div>
@@ -261,13 +261,26 @@
                   </span>
                   <span class="spark-burst" aria-hidden="true"></span>
                 </label>
-                <span class="inline-legend">ソフト15分 / ノーマル30分 / ハード1時間</span>
+                <span class="inline-legend">ソフト4種目 / ノーマル5 / ハード6・各10〜12回×3〜4セット</span>
               </div>
             </div>
             <div class="level-control" role="group" aria-label="筋トレ強度">
               <button type="button" data-plan-level="strength:soft">ソフト</button>
               <button type="button" data-plan-level="strength:normal">ノーマル</button>
               <button type="button" data-plan-level="strength:hard">ハード</button>
+            </div>
+            <div class="strength-focus" id="strengthFocus">
+              <span class="focus-label" id="strengthFocusLabel">今回の自動提案</span>
+              <div class="focus-segs">
+                <div class="level-control" role="group" aria-label="鍛える部位">
+                  <button type="button" data-strength-region="upper">上半身</button>
+                  <button type="button" data-strength-region="lower">下半身</button>
+                </div>
+                <div class="level-control" role="group" aria-label="使う器具">
+                  <button type="button" data-strength-equipment="bodyweight">自重</button>
+                  <button type="button" data-strength-equipment="dumbbell">ダンベル</button>
+                </div>
+              </div>
             </div>
           </article>
           <article class="exercise-card">
@@ -397,6 +410,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=61"></script>
+  <script src="./app.js?v=62"></script>
 </body>
 </html>

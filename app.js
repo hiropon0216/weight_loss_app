@@ -407,8 +407,29 @@ function renderExercise() {
   ["strength", "bag", "running"].forEach((type) => {
     if (!selectedPlanLevel(type)) setPlanLevel(type, "normal");
   });
+  renderStrengthFocusControls();
   renderWorkoutPlan();
   renderRecordWorkoutPlan();
+}
+
+function renderStrengthFocusControls() {
+  // 日付が変わったら手動上書きをリセットし、自動ローテーションに戻す
+  if (strengthFocusDate !== selectedDate) {
+    strengthRegionOverride = null;
+    strengthEquipmentOverride = null;
+    strengthFocusDate = selectedDate;
+  }
+  const focus = resolveStrengthFocus(selectedDate);
+  document.querySelectorAll("[data-strength-region]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.strengthRegion === focus.region);
+  });
+  document.querySelectorAll("[data-strength-equipment]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.strengthEquipment === focus.equipment);
+  });
+  const label = document.querySelector("#strengthFocusLabel");
+  if (label) {
+    label.textContent = `${focus.isAuto ? "今回の自動提案" : "手動設定"}：${strengthFocusLabel(focus.region, focus.equipment)}`;
+  }
 }
 
 function goalSafety(heightCm, goalKg, goalDateIso) {
@@ -702,60 +723,166 @@ function levelLabel(level) {
   return { soft: "ソフト", normal: "ノーマル", hard: "ハード" }[level] || "ノーマル";
 }
 
+// ===== 筋トレ: 動作パターン別データ（pattern / muscle / equipment / region でタグ付け） =====
+// url 省略 = 腕立て・スクワット等のあまりに自明な種目（リンク不要）。それ以外は日本語の解説ページを付与。
+const STRENGTH_EXERCISES = [
+  // --- コア（自重・上下どちらの日でも使用） ---
+  { id: "plank", name: "プランク", rep: "30〜45秒", pattern: "core", muscle: "abs", equipment: "bodyweight", region: "core", kind: "core" },
+  { id: "side-plank", name: "サイドプランク", rep: "20〜30秒/側", url: "https://melos.media/training/64419/2/", pattern: "core", muscle: "obliques", equipment: "bodyweight", region: "core", kind: "core" },
+  { id: "crunch", name: "クランチ", rep: "12〜15回", pattern: "core", muscle: "abs", equipment: "bodyweight", region: "core", kind: "core" },
+  { id: "leg-raise", name: "レッグレイズ", rep: "12〜15回", url: "https://www.shopjapan.co.jp/diet_labo/training/article_023/", pattern: "core", muscle: "abs", equipment: "bodyweight", region: "core", kind: "core" },
+  { id: "dead-bug", name: "デッドバグ", rep: "10回/側", url: "https://fily.jp/articles/2000", pattern: "core", muscle: "abs", equipment: "bodyweight", region: "core", kind: "core" },
+  { id: "mountain-climber", name: "マウンテンクライマー", rep: "30秒", url: "https://ufit.co.jp/blogs/training/mountain-climber", pattern: "core", muscle: "abs", equipment: "bodyweight", region: "core", kind: "core" },
+  { id: "reverse-crunch", name: "リバースクランチ", rep: "12〜15回", url: "https://melos.media/training/151743/", pattern: "core", muscle: "abs", equipment: "bodyweight", region: "core", kind: "core" },
+  { id: "bicycle-crunch", name: "バイシクルクランチ", rep: "左右20回", url: "https://melos.media/training/151743/", pattern: "core", muscle: "obliques", equipment: "bodyweight", region: "core", kind: "core" },
+  { id: "hollow-hold", name: "ホローホールド", rep: "30秒", url: "https://melos.media/training/151743/", pattern: "core", muscle: "abs", equipment: "bodyweight", region: "core", kind: "core" },
+  { id: "russian-twist", name: "ロシアンツイスト", rep: "左右20回", url: "https://ufit.co.jp/blogs/training/russian-twist", pattern: "core", muscle: "obliques", equipment: "bodyweight", region: "core", kind: "core" },
+  // --- 下半身: スクワット系（膝） ---
+  { id: "squat", name: "スクワット", rep: "15回", pattern: "squat", muscle: "quad", equipment: "bodyweight", region: "lower", kind: "main" },
+  { id: "goblet-squat", name: "ゴブレットスクワット", rep: "10〜12回", url: "https://www.kintore-hack.com/how-to-goblet-squat/", pattern: "squat", muscle: "quad", equipment: "dumbbell", region: "lower", kind: "main" },
+  // --- 下半身: ヒンジ系（股関節） ---
+  { id: "hip-lift", name: "ヒップリフト", rep: "15回", url: "https://melos.media/training/60969/", pattern: "hinge", muscle: "glute", equipment: "bodyweight", region: "lower", kind: "main" },
+  { id: "db-rdl", name: "ルーマニアンデッドリフト", rep: "10〜12回", url: "https://fibe.jp/faq/romanian-deadlift-dumbbell/", pattern: "hinge", muscle: "hamstring", equipment: "dumbbell", region: "lower", kind: "main" },
+  { id: "db-deadlift", name: "ダンベルデッドリフト", rep: "10回", url: "https://power-hacks.com/dumbbell-deadlift/", pattern: "hinge", muscle: "hamstring", equipment: "dumbbell", region: "lower", kind: "main" },
+  { id: "db-hip-lift", name: "ダンベルヒップリフト", rep: "12〜15回", url: "https://melos.media/training/60969/", pattern: "hinge", muscle: "glute", equipment: "dumbbell", region: "lower", kind: "main" },
+  // --- 下半身: 片脚 ---
+  { id: "back-lunge", name: "バックランジ", rep: "10回/脚", url: "https://melos.media/training/272277/2/", pattern: "unilateral", muscle: "quad", equipment: "bodyweight", region: "lower", kind: "main" },
+  { id: "split-squat", name: "スプリットスクワット", rep: "10回/脚", url: "https://qitano.com/split-squat", pattern: "unilateral", muscle: "glute", equipment: "bodyweight", region: "lower", kind: "main" },
+  { id: "db-lunge", name: "ダンベルランジ", rep: "10回/脚", url: "https://qitano.com/dumbbell-lunge", pattern: "unilateral", muscle: "quad", equipment: "dumbbell", region: "lower", kind: "main" },
+  // --- 下半身: カーフ（自重のみ。ダンベル日も自重で補完） ---
+  { id: "calf-raise", name: "カーフレイズ", rep: "20回", url: "https://fily.jp/articles/4835", pattern: "calf", muscle: "calf", equipment: "bodyweight", region: "lower", kind: "main" },
+  // --- 上半身: 水平プッシュ ---
+  { id: "push-up", name: "腕立て伏せ", rep: "10〜15回", pattern: "h-push", muscle: "chest", equipment: "bodyweight", region: "upper", kind: "main" },
+  { id: "knee-push-up", name: "膝つき腕立て伏せ", rep: "12〜15回", pattern: "h-push", muscle: "chest", equipment: "bodyweight", region: "upper", kind: "main" },
+  { id: "floor-press", name: "ダンベルフロアプレス", rep: "10〜12回", url: "https://vokka.jp/17340/", pattern: "h-push", muscle: "chest", equipment: "dumbbell", region: "upper", kind: "main" },
+  // --- 上半身: 垂直プッシュ ---
+  { id: "pike-push-up", name: "パイクプッシュアップ", rep: "8〜12回", url: "https://melos.media/training/184478/", pattern: "v-push", muscle: "shoulder", equipment: "bodyweight", region: "upper", kind: "main" },
+  { id: "shoulder-press", name: "ダンベルショルダープレス", rep: "10〜12回", url: "https://belegend.jp/article/communication/9594/", pattern: "v-push", muscle: "shoulder", equipment: "dumbbell", region: "upper", kind: "main" },
+  // --- 上半身: 水平プル（自宅・自重向けに補強） ---
+  { id: "one-arm-row", name: "ワンハンドロー", rep: "10〜12回/側", url: "https://sports.yahoo.co.jp/column/detail/2024071200022-spnavido", pattern: "h-pull", muscle: "back", equipment: "dumbbell", region: "upper", kind: "main" },
+  { id: "towel-row", name: "タオルローイング", rep: "12〜15回", url: "https://qool.jp/200490", pattern: "h-pull", muscle: "back", equipment: "bodyweight", region: "upper", kind: "main" },
+  { id: "inverted-row", name: "斜め懸垂（机ロウ）", rep: "10〜12回", url: "https://qitano.com/inverted-row", pattern: "h-pull", muscle: "back", equipment: "bodyweight", region: "upper", kind: "main" },
+  // --- 上半身: 垂直プル / 後背 ---
+  { id: "db-reverse-fly", name: "ダンベルリバースフライ", rep: "12〜15回", url: "https://fily.jp/articles/3555", pattern: "v-pull", muscle: "rear-delt", equipment: "dumbbell", region: "upper", kind: "main" },
+  { id: "superman", name: "スーパーマン", rep: "15回", url: "https://fily.jp/articles/2007", pattern: "v-pull", muscle: "back", equipment: "bodyweight", region: "upper", kind: "main" },
+  // --- 上半身: 腕（単関節） ---
+  { id: "db-curl", name: "ダンベルカール", rep: "10〜12回", url: "https://fily.jp/articles/2285", pattern: "arm", muscle: "biceps", equipment: "dumbbell", region: "upper", kind: "main" },
+];
+
+// 1セッションの構成: 必須パターン + 不足分を埋める補充パターン（種目数だけ先頭から採用）
+const STRENGTH_TEMPLATES = {
+  upper: { required: ["h-push", "h-pull", "core"], fill: ["v-pull", "v-push", "arm"] },
+  lower: { required: ["squat", "hinge", "core"], fill: ["unilateral", "calf", "hinge"] },
+};
+// 部位×器具の4回ローテーション（上×自重→下×ダンベル→上×ダンベル→下×自重）
+const STRENGTH_ROTATION = [
+  { region: "upper", equipment: "bodyweight" },
+  { region: "lower", equipment: "dumbbell" },
+  { region: "upper", equipment: "dumbbell" },
+  { region: "lower", equipment: "bodyweight" },
+];
+const STRENGTH_COUNT_BY_LEVEL = { soft: 4, normal: 5, hard: 6 };
+const STRENGTH_SETS = { main: { soft: 3, normal: 3, hard: 4 }, core: { soft: 2, normal: 2, hard: 3 } };
+
+let strengthRegionOverride = null;
+let strengthEquipmentOverride = null;
+let strengthFocusDate = null;
+
+function strengthFocusLabel(region, equipment) {
+  return `${region === "upper" ? "上半身" : "下半身"} × ${equipment === "dumbbell" ? "ダンベル" : "自重"}`;
+}
+
+function strengthRotationFor(date) {
+  const last = (state.workoutHistory || [])
+    .filter((entry) => entry.date < date && entry.region && entry.equipment)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (!last) return STRENGTH_ROTATION[0];
+  const lastIdx = STRENGTH_ROTATION.findIndex((c) => c.region === last.region && c.equipment === last.equipment);
+  return STRENGTH_ROTATION[(Math.max(0, lastIdx) + 1) % STRENGTH_ROTATION.length];
+}
+
+function resolveStrengthFocus(date) {
+  const auto = strengthRotationFor(date);
+  return {
+    region: strengthRegionOverride || auto.region,
+    equipment: strengthEquipmentOverride || auto.equipment,
+    isAuto: !strengthRegionOverride && !strengthEquipmentOverride,
+  };
+}
+
+// 直近 days 日の筋群ごとの実施回数（週次バランスの基準）
+function strengthMuscleLoad(days) {
+  const counts = {};
+  const from = new Date(`${selectedDate}T00:00:00`);
+  from.setDate(from.getDate() - days);
+  const fromIso = toIsoDate(from);
+  (state.workoutHistory || [])
+    .filter((entry) => entry.date >= fromIso && entry.date < selectedDate && Array.isArray(entry.muscles))
+    .forEach((entry) => entry.muscles.forEach((m) => { counts[m] = (counts[m] || 0) + 1; }));
+  return counts;
+}
+
+function strengthCandidatePool(region, equipment) {
+  return STRENGTH_EXERCISES.filter((ex) => {
+    if (ex.pattern === "core") return true; // コアは常に候補（自重）
+    if (ex.region !== region) return false;
+    if (equipment === "bodyweight") return ex.equipment === "bodyweight";
+    return true; // ダンベル日は両方候補（自重はスコアで減点しつつ、カーフ等の補完に使う）
+  });
+}
+
+function pickStrengthExercises(region, equipment, count) {
+  const template = STRENGTH_TEMPLATES[region] || STRENGTH_TEMPLATES.upper;
+  const slots = [...template.required, ...template.fill].slice(0, count);
+  const recent = strengthMuscleLoad(7);
+  const prevIds = latestStrengthHistoryIds();
+  const pool = strengthCandidatePool(region, equipment);
+  const usedIds = new Set();
+  const chosen = [];
+  const scoreOf = (ex) =>
+    -(recent[ex.muscle] || 0) * 2          // 直近で多く使った筋群は減点（手薄を優先）
+    - (prevIds.has(ex.id) ? 3 : 0)         // 前日と同一種目は回避
+    + (equipment === "dumbbell" && ex.equipment === "bodyweight" && ex.pattern !== "core" ? -10 : 0) // ダンベル日はダンベル優先
+    + Math.random();                       // 同点はランダム
+  for (const pattern of slots) {
+    let cands = pool.filter((ex) => ex.pattern === pattern && !usedIds.has(ex.id));
+    if (!cands.length) {
+      // 候補が尽きた枠は、同部位の未使用種目（コア以外）で密度を保つ
+      cands = pool.filter((ex) => ex.pattern !== "core" && !usedIds.has(ex.id));
+    }
+    if (!cands.length) continue;
+    const best = cands.map((ex) => ({ ex, s: scoreOf(ex) })).sort((a, b) => b.s - a.s)[0].ex;
+    usedIds.add(best.id);
+    chosen.push(best);
+  }
+  return chosen;
+}
+
+function formatStrengthStep(ex, level) {
+  const sets = (STRENGTH_SETS[ex.kind] || STRENGTH_SETS.main)[level];
+  return { id: ex.id, muscle: ex.muscle, url: ex.url || "", text: `${ex.name} ${ex.rep} × ${sets}セット` };
+}
+
+function buildStrengthSteps(level, focus) {
+  const count = STRENGTH_COUNT_BY_LEVEL[level] || 5;
+  return pickStrengthExercises(focus.region, focus.equipment, count).map((ex) => formatStrengthStep(ex, level));
+}
+
 function buildWorkoutPlan() {
   const labels = { strength: "筋トレ", bag: "サンドバッグ", running: "ランニング" };
-  const strengthPools = {
-    core: [
-      { id: "plank", text: "自重・腹筋: プランク 45秒", url: "https://melos.media/training/46433/" },
-      { id: "side-plank", text: "自重・腹筋: サイドプランク 30秒/側", url: "https://melos.media/training/64419/2/" },
-      { id: "crunch", text: "自重・腹筋: クランチ 15回", url: "https://melos.media/training/210369/" },
-      { id: "leg-raise", text: "自重・腹筋: レッグレイズ 12回", url: "https://www.shopjapan.co.jp/diet_labo/training/article_023/" },
-      { id: "dead-bug", text: "自重・腹筋: デッドバグ 10回/側", url: "https://fily.jp/articles/2000" },
-      { id: "mountain-climber", text: "自重・腹筋: マウンテンクライマー 30秒", url: "https://ufit.co.jp/blogs/training/mountain-climber" },
-      { id: "reverse-crunch", text: "自重・腹筋: リバースクランチ 12回", url: "https://melos.media/training/151743/" },
-      { id: "bicycle-crunch", text: "自重・腹筋: バイシクルクランチ 20回", url: "https://melos.media/training/151743/" },
-      { id: "hollow-hold", text: "自重・腹筋: ホローホールド 30秒", url: "https://melos.media/training/151743/" },
-      { id: "plank-shoulder-tap", text: "自重・腹筋: プランクショルダータップ 20回", url: "https://note.com/guest_iwasawa/n/n3157d31073b2" },
-      { id: "heel-touch", text: "自重・腹筋: ヒールタッチ 20回", url: "https://melos.media/training/151743/" },
-      { id: "russian-twist", text: "自重・腹筋: ロシアンツイスト 20回", url: "https://ufit.co.jp/blogs/training/russian-twist" },
-    ],
-    bodyweight: [
-      { id: "squat", text: "自重: スクワット 15回", url: "https://fily.jp/articles/1345" },
-      { id: "push-up", text: "自重: 腕立て伏せ 10回", url: "https://melos.media/training/29627/" },
-      { id: "knee-push-up", text: "自重: 膝つき腕立て伏せ 12回", url: "https://melos.media/training/156017/" },
-      { id: "hip-lift", text: "自重: ヒップリフト 15回", url: "https://melos.media/training/60969/" },
-      { id: "back-lunge", text: "自重: バックランジ 10回/脚", url: "https://melos.media/training/272277/2/" },
-      { id: "bird-dog", text: "自重: バードドッグ 10回/側", url: "https://www.nike.com/jp/a/bird-dog-exercise/" },
-      { id: "split-squat", text: "自重: スプリットスクワット 10回/脚", url: "https://qitano.com/split-squat" },
-      { id: "burpee", text: "自重: バーピー 8回", url: "https://melos.media/training/32012/" },
-      { id: "calf-raise", text: "自重: カーフレイズ 20回", url: "https://fily.jp/articles/4835" },
-      { id: "pike-push-up", text: "自重: パイクプッシュアップ 8回", url: "https://melos.media/training/184478/" },
-    ],
-    dumbbell: [
-      { id: "goblet-squat", text: "ダンベル: ゴブレットスクワット 12回", url: "https://www.kintore-hack.com/how-to-goblet-squat/" },
-      { id: "db-rdl", text: "ダンベル: ルーマニアンデッドリフト 10回", url: "https://fibe.jp/faq/romanian-deadlift-dumbbell/" },
-      { id: "floor-press", text: "ダンベル: フロアプレス 10回", url: "https://vokka.jp/17340/" },
-      { id: "one-arm-row", text: "ダンベル: ワンハンドロー 12回/側", url: "https://sports.yahoo.co.jp/column/detail/2024071200022-spnavido" },
-      { id: "shoulder-press", text: "ダンベル: ショルダープレス 10回", url: "https://belegend.jp/article/communication/9594/" },
-      { id: "db-curl", text: "ダンベル: ダンベルカール 12回", url: "https://fily.jp/articles/2285" },
-      { id: "db-side-bend", text: "ダンベル: サイドベント 12回/側", url: "https://melos.media/training/151743/" },
-      { id: "db-hip-lift", text: "ダンベル: ヒップリフト 15回", url: "https://melos.media/training/60969/" },
-      { id: "db-lunge", text: "ダンベル: ランジ 10回/脚", url: "https://qitano.com/dumbbell-lunge" },
-      { id: "db-deadlift", text: "ダンベル: デッドリフト 10回", url: "https://power-hacks.com/dumbbell-deadlift/" },
-      { id: "db-thruster", text: "ダンベル: スラスター 10回", url: "https://fitwill.app/ja/exercise/2968/dumbbell-thruster/" },
-      { id: "db-reverse-fly", text: "ダンベル: リバースフライ 12回", url: "https://fily.jp/articles/3555" },
-    ],
-  };
-  const strengthCounts = {
-    soft: { core: 2, bodyweight: 1, dumbbell: 2, rounds: 2 },
-    normal: { core: 3, bodyweight: 2, dumbbell: 3, rounds: 3 },
-    hard: { core: 4, bodyweight: 2, dumbbell: 4, rounds: 4 },
-  };
+  const strengthFocus = resolveStrengthFocus(selectedDate);
+  const strengthMinutes = { soft: "15分", normal: "30分", hard: "1時間" };
+  const buildStrengthMenu = (level) => ({
+    target: `${strengthMinutes[level]}・休憩60〜75秒`,
+    region: strengthFocus.region,
+    equipment: strengthFocus.equipment,
+    steps: buildStrengthSteps(level, strengthFocus),
+  });
   const menus = {
     strength: {
-      soft: { target: "15分", steps: buildStrengthSteps("soft", strengthPools, strengthCounts) },
-      normal: { target: "30分", steps: buildStrengthSteps("normal", strengthPools, strengthCounts) },
-      hard: { target: "1時間", steps: buildStrengthSteps("hard", strengthPools, strengthCounts) },
+      soft: buildStrengthMenu("soft"),
+      normal: buildStrengthMenu("normal"),
+      hard: buildStrengthMenu("hard"),
     },
     bag: {
       soft: { target: "6R", steps: ["6R（1R 3分 + 20秒休憩）"] },
@@ -825,17 +952,6 @@ function getWorkoutPlanForDate(date) {
   return (state.workoutPlans || []).find((plan) => plan.date === date) || null;
 }
 
-function buildStrengthSteps(level, pools, countsByLevel) {
-  const config = countsByLevel[level];
-  const previousIds = latestStrengthHistoryIds();
-  const steps = [
-    ...pickWorkoutSteps(pools.core, config.core, previousIds),
-    ...pickWorkoutSteps(pools.bodyweight, config.bodyweight, previousIds),
-    ...pickWorkoutSteps(pools.dumbbell, config.dumbbell, previousIds),
-  ];
-  return steps.map((step) => ({ ...step, text: `${step.text} x ${config.rounds}` }));
-}
-
 function latestStrengthHistoryIds() {
   return new Set(
     [...(state.workoutHistory || [])]
@@ -845,28 +961,19 @@ function latestStrengthHistoryIds() {
   );
 }
 
-function pickWorkoutSteps(pool, count, previousIds) {
-  const fresh = shuffle(pool.filter((step) => !previousIds.has(step.id)));
-  const fallback = shuffle(pool.filter((step) => previousIds.has(step.id)));
-  return [...fresh, ...fallback].slice(0, count);
-}
-
-function shuffle(items) {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
 function rememberWorkoutPlan(plan) {
   const strength = plan.items.find((item) => item.type === "strength");
   if (!strength) return;
   state.workoutHistory = [
     ...(state.workoutHistory || []).filter((entry) => entry.date !== plan.date),
-    { date: plan.date, strengthStepIds: strength.steps.map((step) => step.id).filter(Boolean) },
-  ].sort((a, b) => a.date.localeCompare(b.date)).slice(-30);
+    {
+      date: plan.date,
+      region: strength.region || null,
+      equipment: strength.equipment || null,
+      strengthStepIds: strength.steps.map((step) => step.id).filter(Boolean),
+      muscles: strength.steps.map((step) => step.muscle).filter(Boolean),
+    },
+  ].sort((a, b) => a.date.localeCompare(b.date)).slice(-60);
 }
 
 function renderPlanInto(selector, plan = state.workoutPlan) {
@@ -896,7 +1003,8 @@ function renderPlanInto(selector, plan = state.workoutPlan) {
 
 function renderWorkoutStep(step) {
   if (typeof step === "string") return `<li>${escapeHtml(step)}</li>`;
-  return `<li>${escapeHtml(step.text)} <a href="${escapeHtml(step.url)}" target="_blank" rel="noopener">参考</a></li>`;
+  const link = step.url ? ` <a href="${escapeHtml(step.url)}" target="_blank" rel="noopener">参考</a>` : "";
+  return `<li>${escapeHtml(step.text)}${link}</li>`;
 }
 
 function renderWorkoutPlan() {
@@ -1167,6 +1275,16 @@ function bindEvents() {
     const input = event.target.closest("[data-plan-enabled]");
     if (!input || !input.checked) return;
     launchBreakerSparks(input.closest(".power-breaker"));
+  });
+
+  document.querySelector("#strengthFocus")?.addEventListener("click", (event) => {
+    const regionButton = event.target.closest("[data-strength-region]");
+    const equipButton = event.target.closest("[data-strength-equipment]");
+    if (!regionButton && !equipButton) return;
+    if (regionButton) strengthRegionOverride = regionButton.dataset.strengthRegion;
+    if (equipButton) strengthEquipmentOverride = equipButton.dataset.strengthEquipment;
+    strengthFocusDate = selectedDate; // 手動操作を保持（リセットさせない）
+    renderStrengthFocusControls();
   });
 
   document.querySelector("#generateWorkout").addEventListener("click", () => {
