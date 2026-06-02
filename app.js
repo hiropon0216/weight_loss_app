@@ -3,6 +3,24 @@ const BACKUP_STORE_KEY = "weightTracker:v1:backup";
 const ALPHA = 0.25;
 const MS_PER_DAY = 86400000;
 const WEEKLY_BOSS_HP = 2000;
+const CUSTOM_TIMER_PRESET_ID = "custom";
+const SAVED_TIMER_PRESET_PREFIX = "saved:";
+const ROUND_TIMER_PRESETS = [
+  { id: "boxing-standard", name: "3分 × 3R", prepSec: 10, workSec: 180, restSec: 60, rounds: 3 },
+  { id: "boxing-short", name: "2分 × 3R", prepSec: 10, workSec: 120, restSec: 60, rounds: 3 },
+  { id: "hiit", name: "HIIT", prepSec: 10, workSec: 30, restSec: 15, rounds: 8 },
+  { id: "tabata", name: "タバタ", prepSec: 10, workSec: 20, restSec: 10, rounds: 8 },
+  { id: CUSTOM_TIMER_PRESET_ID, name: "カスタム", prepSec: 10, workSec: 180, restSec: 60, rounds: 3 },
+];
+const DEFAULT_ROUND_TIMER = {
+  presetId: "boxing-standard",
+  prepSec: 10,
+  workSec: 180,
+  restSec: 60,
+  rounds: 3,
+  sound: true,
+  savedPresets: [],
+};
 
 const toIsoDate = (date) => {
   const year = date.getFullYear();
@@ -31,6 +49,7 @@ const defaultState = {
   workoutPlan: null,
   workoutPlans: [],
   workoutHistory: [],
+  roundTimer: { ...DEFAULT_ROUND_TIMER },
 };
 
 let state = loadState();
@@ -39,6 +58,17 @@ let calendarMonth = selectedDate.slice(0, 7);
 let saveStatusTimer = null;
 let settingsFeedbackTimer = null;
 let workoutFeedbackTimer = null;
+let timerFeedbackTimer = null;
+let timerAudioContext = null;
+let roundTimerRuntime = {
+  status: "idle",
+  stageIndex: 0,
+  stages: [],
+  remainingMs: null,
+  phaseEndsAt: null,
+  tickId: null,
+  lastCountdownSecond: null,
+};
 
 function loadState() {
   try {
@@ -73,6 +103,50 @@ function normalizeState(saved) {
     workoutPlans: Array.isArray(saved?.workoutPlans) ? saved.workoutPlans : [],
     workoutHistory: Array.isArray(saved?.workoutHistory) ? saved.workoutHistory : [],
     workoutPlan: saved?.workoutPlan || null,
+    roundTimer: normalizeRoundTimer(saved?.roundTimer),
+  };
+}
+
+function clampInt(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(number)));
+}
+
+function normalizeSavedTimerPresets(presets) {
+  if (!Array.isArray(presets)) return [];
+  return presets
+    .filter((preset) => preset && typeof preset === "object")
+    .map((preset) => ({
+      id: typeof preset.id === "string" && preset.id ? preset.id : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      name: typeof preset.name === "string" && preset.name.trim() ? preset.name.trim().slice(0, 32) : "保存設定",
+      prepSec: clampInt(preset.prepSec, 0, 600, DEFAULT_ROUND_TIMER.prepSec),
+      workSec: clampInt(preset.workSec, 1, 3600, DEFAULT_ROUND_TIMER.workSec),
+      restSec: clampInt(preset.restSec, 0, 1800, DEFAULT_ROUND_TIMER.restSec),
+      rounds: clampInt(preset.rounds, 1, 99, DEFAULT_ROUND_TIMER.rounds),
+    }))
+    .slice(0, 20);
+}
+
+function normalizeRoundTimer(timer) {
+  const savedPresets = normalizeSavedTimerPresets(timer?.savedPresets);
+  const legacyPresetMap = {
+    "sandbag-standard": "boxing-standard",
+    "sandbag-short": "boxing-short",
+  };
+  const normalizedPresetId = legacyPresetMap[timer?.presetId] || timer?.presetId;
+  const presetId = ROUND_TIMER_PRESETS.some((preset) => preset.id === normalizedPresetId)
+    || savedPresets.some((preset) => `${SAVED_TIMER_PRESET_PREFIX}${preset.id}` === normalizedPresetId)
+    ? normalizedPresetId
+    : DEFAULT_ROUND_TIMER.presetId;
+  return {
+    presetId,
+    prepSec: clampInt(timer?.prepSec, 0, 600, DEFAULT_ROUND_TIMER.prepSec),
+    workSec: clampInt(timer?.workSec, 1, 3600, DEFAULT_ROUND_TIMER.workSec),
+    restSec: clampInt(timer?.restSec, 0, 1800, DEFAULT_ROUND_TIMER.restSec),
+    rounds: clampInt(timer?.rounds, 1, 99, DEFAULT_ROUND_TIMER.rounds),
+    sound: timer?.sound !== false,
+    savedPresets,
   };
 }
 
@@ -260,6 +334,7 @@ function render() {
   renderCalendar();
   renderTrend();
   renderExercise();
+  renderRoundTimer();
   renderSettings();
 }
 
@@ -409,6 +484,416 @@ function renderExercise() {
   });
   renderWorkoutPlan();
   renderRecordWorkoutPlan();
+}
+
+function currentRoundTimer() {
+  state.roundTimer = normalizeRoundTimer(state.roundTimer);
+  return state.roundTimer;
+}
+
+function buildRoundTimerStages(settings) {
+  const stages = [];
+  if (settings.prepSec > 0) {
+    stages.push({ phase: "prep", round: 1, durationSec: settings.prepSec });
+  }
+  for (let round = 1; round <= settings.rounds; round += 1) {
+    stages.push({ phase: "work", round, durationSec: settings.workSec });
+    if (round < settings.rounds && settings.restSec > 0) {
+      stages.push({ phase: "rest", round, durationSec: settings.restSec });
+    }
+  }
+  return stages;
+}
+
+function resetRoundTimer(shouldRender = true) {
+  stopRoundTimerTick();
+  const stages = buildRoundTimerStages(currentRoundTimer());
+  roundTimerRuntime = {
+    status: "idle",
+    stageIndex: 0,
+    stages,
+    remainingMs: stages[0]?.durationSec * 1000 || 0,
+    phaseEndsAt: null,
+    tickId: null,
+    lastCountdownSecond: null,
+  };
+  if (shouldRender) renderRoundTimer();
+}
+
+function ensureRoundTimerRuntime() {
+  if (roundTimerRuntime.stages.length) return;
+  resetRoundTimer(false);
+}
+
+function currentRoundTimerStage() {
+  ensureRoundTimerRuntime();
+  return roundTimerRuntime.stages[roundTimerRuntime.stageIndex] || {
+    phase: "complete",
+    round: currentRoundTimer().rounds,
+    durationSec: 0,
+  };
+}
+
+function timerPhaseLabel(phase) {
+  return {
+    prep: "準備",
+    work: "WORK",
+    rest: "REST",
+    complete: "完了",
+  }[phase] || "準備";
+}
+
+function timerStatusLabel(status) {
+  return {
+    idle: "待機中",
+    running: "進行中",
+    paused: "一時停止",
+    complete: "完了",
+  }[status] || "待機中";
+}
+
+function formatTimerClock(totalSeconds) {
+  const seconds = Math.max(0, Math.ceil(totalSeconds));
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+}
+
+function formatTimerDuration(totalSeconds) {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  if (minutes && rest) return `${minutes}分${rest}秒`;
+  if (minutes) return `${minutes}分`;
+  return `${rest}秒`;
+}
+
+function roundTimerTotalSeconds(settings) {
+  return settings.prepSec + (settings.workSec * settings.rounds) + (settings.restSec * Math.max(0, settings.rounds - 1));
+}
+
+function renderRoundTimer() {
+  const display = document.querySelector("#roundTimerDisplay");
+  if (!display) return;
+
+  const settings = currentRoundTimer();
+  ensureRoundTimerRuntime();
+  const stage = currentRoundTimerStage();
+  const phase = roundTimerRuntime.status === "complete" ? "complete" : stage.phase;
+  const remainingSeconds = roundTimerRuntime.status === "complete"
+    ? 0
+    : (roundTimerRuntime.remainingMs ?? stage.durationSec * 1000) / 1000;
+
+  display.className = `timer-display timer-phase-${phase}`;
+  setText("#timerPhase", timerPhaseLabel(phase));
+  setText("#timerTime", formatTimerClock(remainingSeconds));
+  setText("#timerRound", `ROUND ${stage.round || settings.rounds} / ${settings.rounds}`);
+  setText("#timerStatus", timerStatusLabel(roundTimerRuntime.status));
+  setText("#timerSummary", `準備${formatTimerDuration(settings.prepSec)} / ワーク${formatTimerDuration(settings.workSec)} / 休憩${formatTimerDuration(settings.restSec)} / ${settings.rounds}R / 合計${formatTimerDuration(roundTimerTotalSeconds(settings))}`);
+
+  const startPause = document.querySelector("#timerStartPause");
+  if (startPause) {
+    startPause.textContent = roundTimerRuntime.status === "running" ? "一時停止" : roundTimerRuntime.status === "complete" ? "もう一度" : "開始";
+  }
+
+  const preset = document.querySelector("#timerPreset");
+  if (preset) {
+    const optionsHtml = roundTimerPresetOptionsHtml(settings);
+    if (preset.innerHTML !== optionsHtml) preset.innerHTML = optionsHtml;
+  }
+  updateInputValue("#timerPreset", settings.presetId);
+  updateInputValue("#timerPrepSec", settings.prepSec);
+  updateInputValue("#timerWorkSec", settings.workSec);
+  updateInputValue("#timerRestSec", settings.restSec);
+  updateInputValue("#timerRounds", settings.rounds);
+  const sound = document.querySelector("#timerSound");
+  if (sound) sound.checked = settings.sound;
+  updateTimerPresetNameFromSelection();
+}
+
+function updateInputValue(selector, value) {
+  const input = document.querySelector(selector);
+  if (!input || document.activeElement === input) return;
+  input.value = String(value);
+}
+
+function matchRoundTimerPreset(settings) {
+  const preset = ROUND_TIMER_PRESETS.find((item) => (
+    item.id !== CUSTOM_TIMER_PRESET_ID
+    && item.prepSec === settings.prepSec
+    && item.workSec === settings.workSec
+    && item.restSec === settings.restSec
+    && item.rounds === settings.rounds
+  ));
+  if (preset) return preset.id;
+  const savedPreset = currentRoundTimer().savedPresets.find((item) => (
+    item.prepSec === settings.prepSec
+    && item.workSec === settings.workSec
+    && item.restSec === settings.restSec
+    && item.rounds === settings.rounds
+  ));
+  return savedPreset ? `${SAVED_TIMER_PRESET_PREFIX}${savedPreset.id}` : CUSTOM_TIMER_PRESET_ID;
+}
+
+function saveRoundTimerSettings(nextSettings, options = {}) {
+  const shouldReset = options.reset !== false;
+  state.roundTimer = normalizeRoundTimer(nextSettings);
+  saveState("タイマー設定保存済み");
+  if (shouldReset) resetRoundTimer(false);
+  renderRoundTimer();
+}
+
+function roundTimerPresetOptionsHtml(settings = currentRoundTimer()) {
+  const builtInOptions = ROUND_TIMER_PRESETS
+    .map((preset) => `<option value="${preset.id}">${escapeHtml(preset.name)}</option>`)
+    .join("");
+  const savedOptions = settings.savedPresets
+    .map((preset) => `<option value="${SAVED_TIMER_PRESET_PREFIX}${preset.id}">${escapeHtml(preset.name)}</option>`)
+    .join("");
+  return savedOptions
+    ? `<optgroup label="基本">${builtInOptions}</optgroup><optgroup label="保存済み">${savedOptions}</optgroup>`
+    : builtInOptions;
+}
+
+function roundTimerPresetById(value) {
+  if (value?.startsWith(SAVED_TIMER_PRESET_PREFIX)) {
+    const savedId = value.slice(SAVED_TIMER_PRESET_PREFIX.length);
+    return currentRoundTimer().savedPresets.find((preset) => preset.id === savedId) || null;
+  }
+  return ROUND_TIMER_PRESETS.find((preset) => preset.id === value) || null;
+}
+
+function applySelectedRoundTimerPreset() {
+  const selected = document.querySelector("#timerPreset")?.value;
+  const preset = roundTimerPresetById(selected);
+  if (!preset) return;
+  saveRoundTimerSettings({
+    ...currentRoundTimer(),
+    presetId: selected,
+    prepSec: preset.prepSec,
+    workSec: preset.workSec,
+    restSec: preset.restSec,
+    rounds: preset.rounds,
+  });
+  showTimerFeedback(`${preset.name} を反映しました。`);
+}
+
+function updateTimerPresetNameFromSelection() {
+  const nameInput = document.querySelector("#timerPresetName");
+  const presetSelect = document.querySelector("#timerPreset");
+  if (!nameInput || !presetSelect || document.activeElement === nameInput) return;
+  const preset = roundTimerPresetById(presetSelect.value);
+  nameInput.value = presetSelect.value?.startsWith(SAVED_TIMER_PRESET_PREFIX) && preset ? preset.name : "";
+}
+
+function saveCurrentRoundTimerPreset() {
+  const settings = currentRoundTimer();
+  const nameInput = document.querySelector("#timerPresetName");
+  const selected = document.querySelector("#timerPreset")?.value || "";
+  const name = nameInput?.value.trim() || `${formatTimerDuration(settings.workSec)} × ${settings.rounds}R`;
+  const existingId = selected.startsWith(SAVED_TIMER_PRESET_PREFIX)
+    ? selected.slice(SAVED_TIMER_PRESET_PREFIX.length)
+    : null;
+  const presetId = existingId || `${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
+  const nextPreset = {
+    id: presetId,
+    name,
+    prepSec: settings.prepSec,
+    workSec: settings.workSec,
+    restSec: settings.restSec,
+    rounds: settings.rounds,
+  };
+  const savedPresets = [
+    nextPreset,
+    ...settings.savedPresets.filter((preset) => preset.id !== presetId),
+  ].slice(0, 20);
+  saveRoundTimerSettings({
+    ...settings,
+    presetId: `${SAVED_TIMER_PRESET_PREFIX}${presetId}`,
+    savedPresets,
+  }, { reset: false });
+  showTimerFeedback(`${name} を保存しました。`);
+}
+
+function deleteSelectedRoundTimerPreset() {
+  const selected = document.querySelector("#timerPreset")?.value || "";
+  if (!selected.startsWith(SAVED_TIMER_PRESET_PREFIX)) {
+    showTimerFeedback("保存済み設定だけ削除できます。");
+    return;
+  }
+  const settings = currentRoundTimer();
+  const presetId = selected.slice(SAVED_TIMER_PRESET_PREFIX.length);
+  const target = settings.savedPresets.find((preset) => preset.id === presetId);
+  const savedPresets = settings.savedPresets.filter((preset) => preset.id !== presetId);
+  saveRoundTimerSettings({
+    ...settings,
+    presetId: CUSTOM_TIMER_PRESET_ID,
+    savedPresets,
+  }, { reset: false });
+  showTimerFeedback(`${target?.name || "保存済み設定"} を削除しました。`);
+}
+
+function showTimerFeedback(message) {
+  const feedback = document.querySelector("#timerFeedback");
+  if (!feedback) return;
+  feedback.textContent = message;
+  if (timerFeedbackTimer) clearTimeout(timerFeedbackTimer);
+  timerFeedbackTimer = setTimeout(() => {
+    feedback.textContent = "";
+  }, 2200);
+}
+
+function setTimerSettingsOpen(open) {
+  const modal = document.querySelector("#timerSettingsModal");
+  if (!modal) return;
+  modal.classList.toggle("active", open);
+  modal.setAttribute("aria-hidden", String(!open));
+  if (open) {
+    renderRoundTimer();
+    document.querySelector("#timerPreset")?.focus();
+  } else {
+    document.querySelector("#openTimerSettings")?.focus();
+  }
+}
+
+function startRoundTimer() {
+  ensureRoundTimerRuntime();
+  if (roundTimerRuntime.status === "complete") resetRoundTimer(false);
+  const stage = currentRoundTimerStage();
+  roundTimerRuntime.status = "running";
+  roundTimerRuntime.remainingMs = roundTimerRuntime.remainingMs ?? stage.durationSec * 1000;
+  roundTimerRuntime.phaseEndsAt = Date.now() + roundTimerRuntime.remainingMs;
+  roundTimerRuntime.lastCountdownSecond = null;
+  playTimerTone("gong");
+  startRoundTimerTick();
+  renderRoundTimer();
+}
+
+function pauseRoundTimer() {
+  if (roundTimerRuntime.status !== "running") return;
+  roundTimerRuntime.remainingMs = Math.max(0, roundTimerRuntime.phaseEndsAt - Date.now());
+  roundTimerRuntime.status = "paused";
+  roundTimerRuntime.phaseEndsAt = null;
+  stopRoundTimerTick();
+  renderRoundTimer();
+}
+
+function toggleRoundTimer() {
+  if (roundTimerRuntime.status === "running") {
+    pauseRoundTimer();
+  } else {
+    startRoundTimer();
+  }
+}
+
+function startRoundTimerTick() {
+  stopRoundTimerTick();
+  roundTimerRuntime.tickId = setInterval(updateRoundTimerTick, 200);
+  updateRoundTimerTick();
+}
+
+function stopRoundTimerTick() {
+  if (!roundTimerRuntime.tickId) return;
+  clearInterval(roundTimerRuntime.tickId);
+  roundTimerRuntime.tickId = null;
+}
+
+function updateRoundTimerTick() {
+  if (roundTimerRuntime.status !== "running") return;
+
+  roundTimerRuntime.remainingMs = Math.max(0, roundTimerRuntime.phaseEndsAt - Date.now());
+  const countdownSecond = Math.ceil(roundTimerRuntime.remainingMs / 1000);
+  if (countdownSecond > 0 && countdownSecond <= 3 && countdownSecond !== roundTimerRuntime.lastCountdownSecond) {
+    roundTimerRuntime.lastCountdownSecond = countdownSecond;
+    playTimerTone("countdown");
+  }
+
+  if (roundTimerRuntime.remainingMs <= 0) {
+    advanceRoundTimerStage();
+  }
+  renderRoundTimer();
+}
+
+function advanceRoundTimerStage() {
+  roundTimerRuntime.stageIndex += 1;
+  if (roundTimerRuntime.stageIndex >= roundTimerRuntime.stages.length) {
+    completeRoundTimer();
+    return;
+  }
+  const nextStage = currentRoundTimerStage();
+  roundTimerRuntime.remainingMs = nextStage.durationSec * 1000;
+  roundTimerRuntime.phaseEndsAt = Date.now() + roundTimerRuntime.remainingMs;
+  roundTimerRuntime.lastCountdownSecond = null;
+  playTimerTone(nextStage.phase);
+}
+
+function completeRoundTimer() {
+  stopRoundTimerTick();
+  roundTimerRuntime.status = "complete";
+  roundTimerRuntime.remainingMs = 0;
+  roundTimerRuntime.phaseEndsAt = null;
+  roundTimerRuntime.lastCountdownSecond = null;
+  playTimerTone("complete");
+}
+
+function playTimerTone(type) {
+  if (!currentRoundTimer().sound) return;
+  try {
+    timerAudioContext = timerAudioContext || new (window.AudioContext || window.webkitAudioContext)();
+    if (type === "gong") {
+      playTimerGong();
+      return;
+    }
+    const now = timerAudioContext.currentTime;
+    const frequencies = {
+      prep: 660,
+      work: 880,
+      rest: 520,
+      countdown: 740,
+      complete: 980,
+    };
+    const oscillator = timerAudioContext.createOscillator();
+    const gain = timerAudioContext.createGain();
+    oscillator.frequency.value = frequencies[type] || 660;
+    oscillator.type = type === "complete" ? "triangle" : "sine";
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + (type === "complete" ? 0.42 : 0.16));
+    oscillator.connect(gain);
+    gain.connect(timerAudioContext.destination);
+    oscillator.start(now);
+    oscillator.stop(now + (type === "complete" ? 0.44 : 0.18));
+  } catch {
+    // Audio is best-effort only.
+  }
+}
+
+function playTimerGong() {
+  const now = timerAudioContext.currentTime;
+  const output = timerAudioContext.createGain();
+  output.gain.setValueAtTime(0.001, now);
+  output.gain.exponentialRampToValueAtTime(0.28, now + 0.03);
+  output.gain.exponentialRampToValueAtTime(0.001, now + 1.55);
+  output.connect(timerAudioContext.destination);
+
+  [
+    { frequency: 210, type: "triangle", detune: -8 },
+    { frequency: 318, type: "sine", detune: 5 },
+    { frequency: 472, type: "triangle", detune: 13 },
+  ].forEach((part) => {
+    const oscillator = timerAudioContext.createOscillator();
+    const gain = timerAudioContext.createGain();
+    oscillator.frequency.value = part.frequency;
+    oscillator.detune.value = part.detune;
+    oscillator.type = part.type;
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.exponentialRampToValueAtTime(0.5, now + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.35);
+    oscillator.connect(gain);
+    gain.connect(output);
+    oscillator.start(now);
+    oscillator.stop(now + 1.55);
+  });
 }
 
 function goalSafety(heightCm, goalKg, goalDateIso) {
@@ -1268,6 +1753,57 @@ function bindEvents() {
     showWorkoutGeneratedFeedback(plan);
   });
 
+  document.querySelector("#timerStartPause").addEventListener("click", toggleRoundTimer);
+
+  document.querySelector("#timerReset").addEventListener("click", () => {
+    resetRoundTimer();
+  });
+
+  document.querySelector("#openTimerSettings").addEventListener("click", () => {
+    setTimerSettingsOpen(true);
+  });
+
+  document.querySelector("#closeTimerSettings").addEventListener("click", () => {
+    setTimerSettingsOpen(false);
+  });
+
+  document.querySelector("#timerSettingsModal").addEventListener("click", (event) => {
+    if (event.target.id === "timerSettingsModal") setTimerSettingsOpen(false);
+  });
+
+  document.querySelector("#timerPreset").addEventListener("change", updateTimerPresetNameFromSelection);
+
+  document.querySelector("#applyTimerPreset").addEventListener("click", applySelectedRoundTimerPreset);
+
+  document.querySelector("#saveTimerPreset").addEventListener("click", () => {
+    saveCurrentRoundTimerPreset();
+  });
+
+  document.querySelector("#deleteTimerPreset").addEventListener("click", () => {
+    deleteSelectedRoundTimerPreset();
+  });
+
+  document.querySelectorAll("[data-timer-setting]").forEach((input) => {
+    const updateTimerSetting = () => {
+      const current = currentRoundTimer();
+      const next = {
+        ...current,
+        [input.dataset.timerSetting]: Number(input.value),
+      };
+      next.presetId = matchRoundTimerPreset(normalizeRoundTimer(next));
+      saveRoundTimerSettings(next);
+    };
+    input.addEventListener("input", updateTimerSetting);
+    input.addEventListener("change", updateTimerSetting);
+  });
+
+  document.querySelector("#timerSound").addEventListener("change", (event) => {
+    saveRoundTimerSettings({
+      ...currentRoundTimer(),
+      sound: event.target.checked,
+    }, { reset: false });
+  });
+
   document.querySelector("#exerciseSegment").addEventListener("click", (event) => {
     const button = event.target.closest("[data-exercise]");
     if (!button) return;
@@ -1278,6 +1814,7 @@ function bindEvents() {
   document.querySelector("#resetData").addEventListener("click", () => {
     if (confirm("端末内の体重・運動データをすべて削除しますか？")) {
       state = structuredClone(defaultState);
+      resetRoundTimer(false);
       localStorage.removeItem(STORE_KEY);
       localStorage.removeItem(BACKUP_STORE_KEY);
       render();
