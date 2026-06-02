@@ -1117,6 +1117,14 @@ input:focus, select:focus, textarea:focus {
   line-height: 1;
 }
 
+/* カレンダー右上の総合評価メダルだけ一回り小さく */
+.game-stats strong.rank-badge {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  font-size: 1.2rem;
+}
+
 .section-head {
   display: grid;
   gap: 4px;

@@ -545,6 +545,11 @@ function entriesInMonth(month) {
 function streakDays() {
   const recorded = new Set(state.weightEntries.map((entry) => entry.date));
   let cursor = new Date(`${todayIso()}T00:00:00`);
+  // 当日はまだ進行中。今日の体重が未記録でも前日までの連続記録は途切れていないので、
+  // 今日を飛ばして前日から数える（前日記録→当日0になる不具合の対策）。
+  if (!recorded.has(toIsoDate(cursor))) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
   let count = 0;
   while (recorded.has(toIsoDate(cursor))) {
     count += 1;
@@ -913,6 +918,11 @@ function exerciseStreak(anchorDate) {
   let count = 0;
   let restDays = 0;
   const cursor = new Date(`${anchorDate}T00:00:00`);
+  // 当日はまだ進行中。今日の運動が未記録でも前日までの継続は途切れていないので、
+  // 今日を飛ばして前日から数える（前日運動→当日表示が0になる不具合の対策）。
+  if (anchorDate === todayIso() && !exerciseStreakStatus(anchorDate).ok) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
   while (true) {
     const date = toIsoDate(cursor);
     const status = exerciseStreakStatus(date);
