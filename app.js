@@ -407,29 +407,8 @@ function renderExercise() {
   ["strength", "bag", "running"].forEach((type) => {
     if (!selectedPlanLevel(type)) setPlanLevel(type, "normal");
   });
-  renderStrengthFocusControls();
   renderWorkoutPlan();
   renderRecordWorkoutPlan();
-}
-
-function renderStrengthFocusControls() {
-  // 日付が変わったら手動上書きをリセットし、自動ローテーションに戻す
-  if (strengthFocusDate !== selectedDate) {
-    strengthRegionOverride = null;
-    strengthEquipmentOverride = null;
-    strengthFocusDate = selectedDate;
-  }
-  const focus = resolveStrengthFocus(selectedDate);
-  document.querySelectorAll("[data-strength-region]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.strengthRegion === focus.region);
-  });
-  document.querySelectorAll("[data-strength-equipment]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.strengthEquipment === focus.equipment);
-  });
-  const label = document.querySelector("#strengthFocusLabel");
-  if (label) {
-    label.textContent = `${focus.isAuto ? "今回の自動提案" : "手動設定"}：${strengthFocusLabel(focus.region, focus.equipment)}`;
-  }
 }
 
 function goalSafety(heightCm, goalKg, goalDateIso) {
@@ -775,39 +754,24 @@ const STRENGTH_TEMPLATES = {
   lower: { required: ["squat", "hinge", "core"], fill: ["unilateral", "calf", "hinge"] },
 };
 // 部位×器具の4回ローテーション（上×自重→下×ダンベル→上×ダンベル→下×自重）
-const STRENGTH_ROTATION = [
-  { region: "upper", equipment: "bodyweight" },
-  { region: "lower", equipment: "dumbbell" },
-  { region: "upper", equipment: "dumbbell" },
-  { region: "lower", equipment: "bodyweight" },
-];
 const STRENGTH_COUNT_BY_LEVEL = { soft: 4, normal: 5, hard: 6 };
 const STRENGTH_SETS = { main: { soft: 3, normal: 3, hard: 4 }, core: { soft: 2, normal: 2, hard: 3 } };
 
-let strengthRegionOverride = null;
-let strengthEquipmentOverride = null;
-let strengthFocusDate = null;
-
-function strengthFocusLabel(region, equipment) {
-  return `${region === "upper" ? "上半身" : "下半身"} × ${equipment === "dumbbell" ? "ダンベル" : "自重"}`;
-}
-
-function strengthRotationFor(date) {
-  const last = (state.workoutHistory || [])
-    .filter((entry) => entry.date < date && entry.region && entry.equipment)
-    .sort((a, b) => b.date.localeCompare(a.date))[0];
-  if (!last) return STRENGTH_ROTATION[0];
-  const lastIdx = STRENGTH_ROTATION.findIndex((c) => c.region === last.region && c.equipment === last.equipment);
-  return STRENGTH_ROTATION[(Math.max(0, lastIdx) + 1) % STRENGTH_ROTATION.length];
-}
-
-function resolveStrengthFocus(date) {
-  const auto = strengthRotationFor(date);
-  return {
-    region: strengthRegionOverride || auto.region,
-    equipment: strengthEquipmentOverride || auto.equipment,
-    isAuto: !strengthRegionOverride && !strengthEquipmentOverride,
-  };
+// 履歴を参照して、その日に鍛えるべき部位（上半身/下半身）を自動選択する。
+// 直近7日で実施回数が少ない部位を優先し、同数なら前回と反対の部位（連日同部位を避け回復を確保）。
+function autoStrengthRegion(date) {
+  const sessions = (state.workoutHistory || [])
+    .filter((entry) => entry.date < date && entry.region)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  if (!sessions.length) return "upper";
+  const from = new Date(`${date}T00:00:00`);
+  from.setDate(from.getDate() - 7);
+  const fromIso = toIsoDate(from);
+  const window = sessions.filter((entry) => entry.date >= fromIso);
+  const upper = window.filter((entry) => entry.region === "upper").length;
+  const lower = window.filter((entry) => entry.region === "lower").length;
+  if (upper === lower) return sessions[0].region === "upper" ? "lower" : "upper";
+  return upper < lower ? "upper" : "lower";
 }
 
 // 直近 days 日の筋群ごとの実施回数（週次バランスの基準）
@@ -822,28 +786,39 @@ function strengthMuscleLoad(days) {
   return counts;
 }
 
-function strengthCandidatePool(region, equipment) {
-  return STRENGTH_EXERCISES.filter((ex) => {
-    if (ex.pattern === "core") return true; // コアは常に候補（自重）
-    if (ex.region !== region) return false;
-    if (equipment === "bodyweight") return ex.equipment === "bodyweight";
-    return true; // ダンベル日は両方候補（自重はスコアで減点しつつ、カーフ等の補完に使う）
-  });
+// 直近 days 日の器具ごとの実施回数（自重×ダンベルを週単位でも均す基準）
+function strengthEquipLoad(days) {
+  const counts = { bodyweight: 0, dumbbell: 0 };
+  const from = new Date(`${selectedDate}T00:00:00`);
+  from.setDate(from.getDate() - days);
+  const fromIso = toIsoDate(from);
+  (state.workoutHistory || [])
+    .filter((entry) => entry.date >= fromIso && entry.date < selectedDate && Array.isArray(entry.equipments))
+    .forEach((entry) => entry.equipments.forEach((e) => { counts[e] = (counts[e] || 0) + 1; }));
+  return counts;
 }
 
-function pickStrengthExercises(region, equipment, count) {
+function pickStrengthExercises(region, count) {
   const template = STRENGTH_TEMPLATES[region] || STRENGTH_TEMPLATES.upper;
   const slots = [...template.required, ...template.fill].slice(0, count);
-  const recent = strengthMuscleLoad(7);
+  const recentMuscle = strengthMuscleLoad(7);
+  const recentEquip = strengthEquipLoad(7);
   const prevIds = latestStrengthHistoryIds();
-  const pool = strengthCandidatePool(region, equipment);
+  // 候補は部位内の全器具（コアは常に自重）。器具は1日固定にせず、セッション内で自重×ダンベルを均す。
+  const pool = STRENGTH_EXERCISES.filter((ex) => ex.pattern === "core" || ex.region === region);
   const usedIds = new Set();
+  const sessionEquip = { bodyweight: 0, dumbbell: 0 }; // メイン種目のセッション内器具カウント
   const chosen = [];
-  const scoreOf = (ex) =>
-    -(recent[ex.muscle] || 0) * 2          // 直近で多く使った筋群は減点（手薄を優先）
-    - (prevIds.has(ex.id) ? 3 : 0)         // 前日と同一種目は回避
-    + (equipment === "dumbbell" && ex.equipment === "bodyweight" && ex.pattern !== "core" ? -10 : 0) // ダンベル日はダンベル優先
-    + Math.random();                       // 同点はランダム
+  const scoreOf = (ex) => {
+    let s = -(recentMuscle[ex.muscle] || 0) * 2   // 直近で多い筋群は減点（手薄を優先）
+            - (prevIds.has(ex.id) ? 3 : 0)        // 前回と同一種目は回避
+            + Math.random();                      // 同点はランダム
+    if (ex.pattern !== "core") {
+      // セッション内で少ない器具を強く優先＋週内で少ない器具を軽く優先（自重×ダンベルのバランス配分）
+      s += -(sessionEquip[ex.equipment] || 0) * 2.5 - (recentEquip[ex.equipment] || 0) * 0.5;
+    }
+    return s;
+  };
   for (const pattern of slots) {
     let cands = pool.filter((ex) => ex.pattern === pattern && !usedIds.has(ex.id));
     if (!cands.length) {
@@ -854,30 +829,34 @@ function pickStrengthExercises(region, equipment, count) {
     const best = cands.map((ex) => ({ ex, s: scoreOf(ex) })).sort((a, b) => b.s - a.s)[0].ex;
     usedIds.add(best.id);
     chosen.push(best);
+    if (best.pattern !== "core") sessionEquip[best.equipment] = (sessionEquip[best.equipment] || 0) + 1;
   }
   return chosen;
 }
 
 function formatStrengthStep(ex, level) {
   const sets = (STRENGTH_SETS[ex.kind] || STRENGTH_SETS.main)[level];
-  return { id: ex.id, muscle: ex.muscle, url: ex.url || "", text: `${ex.name} ${ex.rep} × ${sets}セット` };
+  return { id: ex.id, muscle: ex.muscle, equipment: ex.equipment, url: ex.url || "", text: `${ex.name} ${ex.rep} × ${sets}セット` };
 }
 
-function buildStrengthSteps(level, focus) {
+function buildStrengthSteps(level, region) {
   const count = STRENGTH_COUNT_BY_LEVEL[level] || 5;
-  return pickStrengthExercises(focus.region, focus.equipment, count).map((ex) => formatStrengthStep(ex, level));
+  return pickStrengthExercises(region, count).map((ex) => formatStrengthStep(ex, level));
 }
 
 function buildWorkoutPlan() {
   const labels = { strength: "筋トレ", bag: "サンドバッグ", running: "ランニング" };
-  const strengthFocus = resolveStrengthFocus(selectedDate);
+  const strengthRegion = autoStrengthRegion(selectedDate);
   const strengthMinutes = { soft: "15分", normal: "30分", hard: "1時間" };
-  const buildStrengthMenu = (level) => ({
-    target: `${strengthMinutes[level]}・休憩60〜75秒`,
-    region: strengthFocus.region,
-    equipment: strengthFocus.equipment,
-    steps: buildStrengthSteps(level, strengthFocus),
-  });
+  const buildStrengthMenu = (level) => {
+    const steps = buildStrengthSteps(level, strengthRegion);
+    return {
+      target: `${strengthMinutes[level]}・休憩60〜75秒`,
+      region: strengthRegion,
+      equipments: steps.map((step) => step.equipment).filter(Boolean),
+      steps,
+    };
+  };
   const menus = {
     strength: {
       soft: buildStrengthMenu("soft"),
@@ -969,7 +948,7 @@ function rememberWorkoutPlan(plan) {
     {
       date: plan.date,
       region: strength.region || null,
-      equipment: strength.equipment || null,
+      equipments: strength.equipments || [],
       strengthStepIds: strength.steps.map((step) => step.id).filter(Boolean),
       muscles: strength.steps.map((step) => step.muscle).filter(Boolean),
     },
@@ -1275,16 +1254,6 @@ function bindEvents() {
     const input = event.target.closest("[data-plan-enabled]");
     if (!input || !input.checked) return;
     launchBreakerSparks(input.closest(".power-breaker"));
-  });
-
-  document.querySelector("#strengthFocus")?.addEventListener("click", (event) => {
-    const regionButton = event.target.closest("[data-strength-region]");
-    const equipButton = event.target.closest("[data-strength-equipment]");
-    if (!regionButton && !equipButton) return;
-    if (regionButton) strengthRegionOverride = regionButton.dataset.strengthRegion;
-    if (equipButton) strengthEquipmentOverride = equipButton.dataset.strengthEquipment;
-    strengthFocusDate = selectedDate; // 手動操作を保持（リセットさせない）
-    renderStrengthFocusControls();
   });
 
   document.querySelector("#generateWorkout").addEventListener("click", () => {

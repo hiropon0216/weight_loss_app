@@ -1514,23 +1514,6 @@ canvas {
   background: rgba(64, 28, 34, 0.95);
 }
 
-.strength-focus {
-  margin-top: 10px;
-  display: grid;
-  gap: 6px;
-}
-
-.strength-focus .focus-label {
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-
-.strength-focus .focus-segs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 .weekly-summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

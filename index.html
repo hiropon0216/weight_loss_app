@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=62">
+  <link rel="stylesheet" href="./styles.css?v=63">
 </head>
 <body>
   <div id="app">
@@ -21,7 +21,7 @@
       <section class="view active" id="view-today" aria-label="記録">
         <div class="record-header">
           <span>記録</span>
-          <small>ver 1.04 筋トレ自動提案を刷新：上下分割×週次バランス（最終更新 2026-06-02）</small>
+          <small>ver 1.05 筋トレ提案を改良：部位自動選択×器具バランス配分（最終更新 2026-06-02）</small>
         </div>
         <div class="hero-panel game-panel">
           <div>
@@ -269,19 +269,6 @@
               <button type="button" data-plan-level="strength:normal">ノーマル</button>
               <button type="button" data-plan-level="strength:hard">ハード</button>
             </div>
-            <div class="strength-focus" id="strengthFocus">
-              <span class="focus-label" id="strengthFocusLabel">今回の自動提案</span>
-              <div class="focus-segs">
-                <div class="level-control" role="group" aria-label="鍛える部位">
-                  <button type="button" data-strength-region="upper">上半身</button>
-                  <button type="button" data-strength-region="lower">下半身</button>
-                </div>
-                <div class="level-control" role="group" aria-label="使う器具">
-                  <button type="button" data-strength-equipment="bodyweight">自重</button>
-                  <button type="button" data-strength-equipment="dumbbell">ダンベル</button>
-                </div>
-              </div>
-            </div>
           </article>
           <article class="exercise-card">
             <div>
@@ -410,6 +397,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=62"></script>
+  <script src="./app.js?v=63"></script>
 </body>
 </html>
