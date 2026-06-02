@@ -1481,6 +1481,39 @@ canvas {
   background: rgba(56, 39, 44, 0.94);
 }
 
+.goal-notice {
+  margin: 4px 0 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(27, 32, 56, 0.92);
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.goal-notice.is-hidden {
+  display: none;
+}
+
+.goal-notice.ok {
+  border-color: rgba(87, 242, 223, 0.4);
+  color: #b9f4ec;
+  background: rgba(24, 44, 52, 0.9);
+}
+
+.goal-notice.caution {
+  border-color: rgba(255, 211, 110, 0.56);
+  color: #ffe19a;
+  background: rgba(56, 39, 44, 0.94);
+}
+
+.goal-notice.danger {
+  border-color: rgba(255, 120, 120, 0.6);
+  color: #ffc2c2;
+  background: rgba(64, 28, 34, 0.95);
+}
+
 .weekly-summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

@@ -22,7 +22,7 @@ const defaultState = {
     heightCm: 167,
     startDate: todayIso(),
     startWeightKg: 78,
-    goalWeightKg: 70,
+    goalWeightKg: 67,
     goalDate: addDaysIso(112),
   },
   weightEntries: [],
@@ -208,7 +208,7 @@ function currentWeekAverage() {
   const mondayOffset = day === 0 ? -6 : 1 - day;
   const monday = new Date(latest);
   monday.setDate(latest.getDate() + mondayOffset);
-  const mondayIso = monday.toISOString().slice(0, 10);
+  const mondayIso = toIsoDate(monday);
   return average(entries.filter((entry) => entry.date >= mondayIso).map((entry) => entry.weightKg));
 }
 
@@ -238,7 +238,7 @@ function forecastGoalDate() {
   const days = Math.round((remaining / Math.abs(pace)) * 7);
   const d = new Date(`${latest.date}T00:00:00`);
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return toIsoDate(d);
 }
 
 function bmi(weightKg) {
@@ -357,32 +357,49 @@ function renderTrend() {
   renderWeeklySummary();
 }
 
+function earliestActivityDate() {
+  const dates = [
+    ...state.weightEntries.map((entry) => entry.date),
+    ...state.dailyChecks.filter(checkHasData).map((entry) => entry.date),
+  ];
+  return dates.length ? dates.reduce((min, date) => (date < min ? date : min)) : null;
+}
+
 function renderWeeklySummary() {
   const entries = sortedWeights();
   const latestDate = entries.at(-1)?.date || todayIso();
   const end = new Date(`${latestDate}T00:00:00`);
-  const start = new Date(end);
-  start.setDate(end.getDate() - 6);
+  const windowStart = new Date(end);
+  windowStart.setDate(end.getDate() - 6);
+  // 利用開始前の日を0点で不当に数えないよう、最初の記録日を下限にする
+  const firstActivity = earliestActivityDate();
+  const start = firstActivity && firstActivity > toIsoDate(windowStart)
+    ? new Date(`${firstActivity}T00:00:00`)
+    : windowStart;
   const startIso = toIsoDate(start);
-  const rangeEntries = entries.filter((entry) => entry.date >= startIso && entry.date <= latestDate);
+
   const scores = [];
+  let recordedDays = 0;
   for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
     const date = toIsoDate(cursor);
     const hasRecord = state.weightEntries.some((entry) => entry.date === date);
     const hasCheck = state.dailyChecks.some((entry) => entry.date === date && checkHasData(entry));
-    if (hasRecord || hasCheck) scores.push(dailyScore(date));
+    if (hasRecord || hasCheck) recordedDays += 1;
+    // 未記録日も0点として母数に含める（「記録した日だけ平均」で水増しされる逆インセンティブの防止）
+    scores.push(dailyScore(date));
   }
 
-  const avgScore = scores.length ? average(scores) : 0;
+  const totalDays = scores.length;
+  const avgScore = totalDays ? average(scores) : 0;
   const rank = rankFromScore(avgScore);
   setText("#weeklyRange", `${startIso.replaceAll("-", "/")} - ${latestDate.replaceAll("-", "/")}`);
-  setRankBadge(document.querySelector("#weeklyRank"), scores.length ? rank : "D");
+  setRankBadge(document.querySelector("#weeklyRank"), recordedDays ? rank : "D");
 
   const comment = document.querySelector("#weeklyComment");
-  if (!scores.length) {
+  if (!recordedDays) {
     comment.textContent = "この期間にはまだ評価対象の記録がありません。";
   } else {
-    comment.textContent = `${scores.length}日分の記録から算出。平均${Math.round(avgScore)}点相当の${rank}評価です。`;
+    comment.textContent = `直近${totalDays}日中${recordedDays}日を記録。未記録日も0点として平均${Math.round(avgScore)}点・${rank}評価です。`;
   }
 }
 
@@ -394,6 +411,48 @@ function renderExercise() {
   renderRecordWorkoutPlan();
 }
 
+function goalSafety(heightCm, goalKg, goalDateIso) {
+  const heightM = (Number(heightCm) || 0) / 100;
+  if (heightM <= 0 || !Number.isFinite(goalKg) || goalKg <= 0) {
+    return { level: "ok", text: "" };
+  }
+  const goalBmi = goalKg / (heightM * heightM);
+  const healthyLow = round1(18.5 * heightM * heightM);
+  const healthyHigh = round1(25 * heightM * heightM);
+  const messages = [];
+  let level = "ok";
+  if (goalBmi < 18.5) {
+    level = "danger";
+    messages.push(`目標 ${round1(goalKg)}kg は BMI ${goalBmi.toFixed(1)} で低体重域です。健康のため ${healthyLow}kg 以上（BMI18.5以上）を推奨します。`);
+  } else if (goalBmi >= 25) {
+    level = "caution";
+    messages.push(`目標 ${round1(goalKg)}kg は BMI ${goalBmi.toFixed(1)} でまだ肥満域です。${healthyHigh}kg 以下（BMI25未満）を目指すとより健康的です。`);
+  }
+  const baseWeight = currentBodyWeightKg();
+  const daysLeft = goalDateIso ? daysBetween(todayIso(), goalDateIso) : 0;
+  if (daysLeft > 0 && baseWeight > goalKg) {
+    const pace = ((baseWeight - goalKg) / daysLeft) * 7;
+    if (pace > 0.9) {
+      if (level !== "danger") level = "caution";
+      messages.push(`この期限だと週 ${pace.toFixed(2)}kg の減量が必要で、安全な目安（週0.9kgまで）を超えています。期限を延ばすか目標を見直しましょう。`);
+    }
+  }
+  if (!messages.length) {
+    messages.push(`目標 ${round1(goalKg)}kg は BMI ${goalBmi.toFixed(1)} で健康域です（健康域: ${healthyLow}〜${healthyHigh}kg）。`);
+  }
+  return { level, text: messages.join(" ") };
+}
+
+function applyGoalNotice(heightCm, goalKg, goalDateIso) {
+  const el = document.querySelector("#goalNotice");
+  if (!el) return;
+  const { level, text } = goalSafety(heightCm, goalKg, goalDateIso);
+  el.textContent = text;
+  el.classList.remove("ok", "caution", "danger");
+  el.classList.add(level);
+  el.classList.toggle("is-hidden", !text);
+}
+
 function renderSettings() {
   document.querySelector("#heightCm").value = state.settings.heightCm;
   document.querySelector("#startWeight").value = state.settings.startWeightKg;
@@ -401,6 +460,7 @@ function renderSettings() {
   document.querySelector("#goalDate").value = state.settings.goalDate;
   setText("#bmi25Weight", `${round1(weightForBmi(25)).toFixed(1)} kg`);
   setText("#bmi22Weight", `${round1(weightForBmi(22)).toFixed(1)} kg`);
+  applyGoalNotice(state.settings.heightCm, state.settings.goalWeightKg, state.settings.goalDate);
 }
 
 function drawChart() {
@@ -1077,6 +1137,14 @@ function bindEvents() {
     saveState("設定保存済み");
     render();
     showSettingsSavedFeedback();
+  });
+
+  document.querySelector("#settingsForm").addEventListener("input", () => {
+    applyGoalNotice(
+      Number(document.querySelector("#heightCm").value),
+      Number(document.querySelector("#goalWeight").value),
+      document.querySelector("#goalDate").value
+    );
   });
 
   document.querySelector("#dailyChecks").addEventListener("change", (event) => {

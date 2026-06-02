@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=60">
+  <link rel="stylesheet" href="./styles.css?v=61">
 </head>
 <body>
   <div id="app">
@@ -21,7 +21,7 @@
       <section class="view active" id="view-today" aria-label="記録">
         <div class="record-header">
           <span>記録</span>
-          <small>ver 1.02 Must/Plus・週間燃焼・継続演出（最終更新 2026-06-02）</small>
+          <small>ver 1.03 安全目標ガード・週間評価適正化・日付補正（最終更新 2026-06-02）</small>
         </div>
         <div class="hero-panel game-panel">
           <div>
@@ -357,6 +357,7 @@
             <label for="goalDate">期限</label>
             <input id="goalDate" type="date" required>
           </div>
+          <p class="goal-notice ok is-hidden" id="goalNotice" aria-live="polite"></p>
           <button class="primary-button settings-save-button" id="saveSettingsButton" type="submit">設定を保存</button>
           <p class="settings-feedback" id="settingsFeedback" aria-live="polite"></p>
         </form>
@@ -396,6 +397,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=60"></script>
+  <script src="./app.js?v=61"></script>
 </body>
 </html>
