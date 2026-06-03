@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=71">
+  <link rel="stylesheet" href="./styles.css?v=72">
 </head>
 <body>
   <div id="app">
@@ -21,7 +21,7 @@
       <section class="view active" id="view-today" aria-label="記録">
         <div class="record-header">
           <span>記録</span>
-          <small>ver 1.09 タイマー実行中は画面スリープを防止（最終更新 2026-06-03）</small>
+          <small>ver 1.10 タイマー音・設定を調整（ワーク分単位／停止・リセット音／拍子木はワークのみ）（最終更新 2026-06-03）</small>
         </div>
         <div class="hero-panel game-panel">
           <div>
@@ -383,8 +383,8 @@
                 <div class="form-row">
                   <label for="timerWorkSec">ワーク</label>
                   <div class="input-unit">
-                    <input id="timerWorkSec" type="number" min="1" max="3600" step="1" inputmode="numeric" data-timer-setting="workSec">
-                    <span>秒</span>
+                    <input id="timerWorkSec" type="number" min="0.5" max="60" step="0.5" inputmode="decimal" data-timer-setting-min="workSec">
+                    <span>分</span>
                   </div>
                 </div>
                 <div class="form-row">
@@ -402,10 +402,6 @@
                   </div>
                 </div>
               </div>
-              <label class="timer-sound-toggle">
-                <input id="timerSound" type="checkbox">
-                <span>フェーズ切替音を鳴らす</span>
-              </label>
               <div class="form-row">
                 <label for="timerPresetName">設定名</label>
                 <input id="timerPresetName" type="text" maxlength="32" placeholder="例: 追い込み 90秒×5R">
@@ -489,6 +485,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=71"></script>
+  <script src="./app.js?v=72"></script>
 </body>
 </html>

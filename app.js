@@ -628,11 +628,9 @@ function renderRoundTimer() {
   }
   updateInputValue("#timerPreset", settings.presetId);
   updateInputValue("#timerPrepSec", settings.prepSec);
-  updateInputValue("#timerWorkSec", settings.workSec);
+  updateInputValue("#timerWorkSec", round2(settings.workSec / 60));
   updateInputValue("#timerRestSec", settings.restSec);
   updateInputValue("#timerRounds", settings.rounds);
-  const sound = document.querySelector("#timerSound");
-  if (sound) sound.checked = settings.sound;
   updateTimerPresetNameFromSelection();
   syncWakeLock();
 }
@@ -824,6 +822,7 @@ function startRoundTimer() {
 
 function pauseRoundTimer() {
   if (roundTimerRuntime.status !== "running") return;
+  playClick();
   roundTimerRuntime.remainingMs = Math.max(0, roundTimerRuntime.phaseEndsAt - Date.now());
   roundTimerRuntime.status = "paused";
   roundTimerRuntime.phaseEndsAt = null;
@@ -856,7 +855,9 @@ function updateRoundTimerTick() {
 
   roundTimerRuntime.remainingMs = Math.max(0, roundTimerRuntime.phaseEndsAt - Date.now());
   const countdownSecond = Math.ceil(roundTimerRuntime.remainingMs / 1000);
-  if (countdownSecond === 10 && !roundTimerRuntime.tenSecondPlayed) {
+  const currentPhase = roundTimerRuntime.stages[roundTimerRuntime.stageIndex]?.phase;
+  // 拍子木はワークの最後10秒だけ（準備・休憩では鳴らさない）
+  if (countdownSecond === 10 && !roundTimerRuntime.tenSecondPlayed && currentPhase === "work") {
     roundTimerRuntime.tenSecondPlayed = true;
     playTimerTone("clapper");
   }
@@ -894,8 +895,31 @@ function completeRoundTimer() {
   playTimerTone("complete");
 }
 
+// 一時停止・リセット時のシンプルな機械音（短いクリック）。
+function playClick() {
+  try {
+    timerAudioContext = timerAudioContext || new (window.AudioContext || window.webkitAudioContext)();
+    if (timerAudioContext.state === "suspended") timerAudioContext.resume();
+    const ctx = timerAudioContext;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(420, now);
+    osc.frequency.exponentialRampToValueAtTime(180, now + 0.05);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.1);
+  } catch {
+    // best-effort
+  }
+}
+
 function playTimerTone(type) {
-  if (!currentRoundTimer().sound) return;
   try {
     timerAudioContext = timerAudioContext || new (window.AudioContext || window.webkitAudioContext)();
     if (timerAudioContext.state === "suspended") timerAudioContext.resume();
@@ -1925,6 +1949,7 @@ function bindEvents() {
   });
 
   document.querySelector("#timerReset").addEventListener("click", () => {
+    playClick();
     resetRoundTimer();
   });
 
@@ -1966,11 +1991,17 @@ function bindEvents() {
     input.addEventListener("change", updateTimerSetting);
   });
 
-  document.querySelector("#timerSound").addEventListener("change", (event) => {
-    saveRoundTimerSettings({
-      ...currentRoundTimer(),
-      sound: event.target.checked,
-    }, { reset: false });
+  document.querySelectorAll("[data-timer-setting-min]").forEach((input) => {
+    const updateTimerSettingMin = () => {
+      const next = {
+        ...currentRoundTimer(),
+        [input.dataset.timerSettingMin]: Math.round(Number(input.value) * 60),
+      };
+      next.presetId = matchRoundTimerPreset(normalizeRoundTimer(next));
+      saveRoundTimerSettings(next);
+    };
+    input.addEventListener("input", updateTimerSettingMin);
+    input.addEventListener("change", updateTimerSettingMin);
   });
 
   document.querySelector("#exerciseSegment").addEventListener("click", (event) => {
