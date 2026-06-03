@@ -62,6 +62,8 @@ let timerFeedbackTimer = null;
 let timerAudioContext = null;
 let gongBuffer = null;
 let timerLastPhase = null;
+let wakeLockSentinel = null;
+let wakeLockPending = false;
 let roundTimerRuntime = {
   status: "idle",
   stageIndex: 0,
@@ -632,6 +634,7 @@ function renderRoundTimer() {
   const sound = document.querySelector("#timerSound");
   if (sound) sound.checked = settings.sound;
   updateTimerPresetNameFromSelection();
+  syncWakeLock();
 }
 
 function updateInputValue(selector, value) {
@@ -777,6 +780,32 @@ function setTimerSettingsOpen(open) {
   } else {
     document.querySelector("#openTimerSettings")?.focus();
   }
+}
+
+// 画面スリープ防止：タイマー実行中だけ Screen Wake Lock を取得する。
+function requestWakeLock() {
+  if (!("wakeLock" in navigator) || wakeLockSentinel || wakeLockPending) return;
+  wakeLockPending = true;
+  navigator.wakeLock.request("screen")
+    .then((lock) => {
+      wakeLockSentinel = lock;
+      // バックグラウンド化等でOSが解放したら参照をクリア（復帰時に再取得する）
+      lock.addEventListener("release", () => { wakeLockSentinel = null; });
+    })
+    .catch(() => {})
+    .finally(() => { wakeLockPending = false; });
+}
+
+function releaseWakeLock() {
+  const lock = wakeLockSentinel;
+  wakeLockSentinel = null;
+  if (lock) lock.release().catch(() => {});
+}
+
+// タイマーの状態に合わせて Wake Lock を取得/解放する。
+function syncWakeLock() {
+  if (roundTimerRuntime.status === "running") requestWakeLock();
+  else releaseWakeLock();
 }
 
 function startRoundTimer() {
@@ -1889,6 +1918,11 @@ function bindEvents() {
   });
 
   document.querySelector("#timerStartPause").addEventListener("click", toggleRoundTimer);
+
+  // タブ/アプリ復帰時、タイマー実行中なら Wake Lock を取り直す（バックグラウンドで自動解放されるため）
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") syncWakeLock();
+  });
 
   document.querySelector("#timerReset").addEventListener("click", () => {
     resetRoundTimer();
