@@ -61,6 +61,7 @@ let workoutFeedbackTimer = null;
 let timerFeedbackTimer = null;
 let timerAudioContext = null;
 let gongBuffer = null;
+let timerLastPhase = null;
 let roundTimerRuntime = {
   status: "idle",
   stageIndex: 0,
@@ -587,6 +588,27 @@ function renderRoundTimer() {
 
   display.className = `timer-display timer-phase-${phase}`;
   setText("#timerPhase", timerPhaseLabel(phase));
+
+  // 次フェーズの予告（種類＋長さ）を事前表示
+  const nextStage = roundTimerRuntime.status === "complete"
+    ? null
+    : (roundTimerRuntime.stages[roundTimerRuntime.stageIndex + 1] || null);
+  const nextText = roundTimerRuntime.status === "complete"
+    ? "—"
+    : (nextStage ? `${timerPhaseLabel(nextStage.phase)} ${formatTimerDuration(nextStage.durationSec)}` : "完了");
+  setText("#timerNextValue", nextText);
+
+  // フェーズが変わったら、スロットのように1段落ちて切り替える
+  if (phase !== timerLastPhase) {
+    timerLastPhase = phase;
+    const phaseEl = document.querySelector("#timerPhase");
+    if (phaseEl) {
+      phaseEl.classList.remove("slot-in");
+      void phaseEl.offsetWidth; // アニメーションを再生し直すためのreflow
+      phaseEl.classList.add("slot-in");
+    }
+  }
+
   setText("#timerTime", formatTimerClock(remainingSeconds));
   setText("#timerRound", `ROUND ${stage.round || settings.rounds} / ${settings.rounds}`);
   setText("#timerStatus", timerStatusLabel(roundTimerRuntime.status));

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=69">
+  <link rel="stylesheet" href="./styles.css?v=70">
 </head>
 <body>
   <div id="app">
@@ -21,7 +21,7 @@
       <section class="view active" id="view-today" aria-label="記録">
         <div class="record-header">
           <span>記録</span>
-          <small>ver 1.07 タイマーのゴングを実録音に・効果音を3種に（最終更新 2026-06-03）</small>
+          <small>ver 1.08 タイマー表示を改善：フェーズ大表示・次フェーズ予告・スロット切替（最終更新 2026-06-03）</small>
         </div>
         <div class="hero-panel game-panel">
           <div>
@@ -334,12 +334,18 @@
           </div>
 
           <section class="timer-display timer-phase-prep" id="roundTimerDisplay" aria-live="polite">
-            <p class="panel-label" id="timerPhase">準備</p>
+            <div class="timer-phase-reel">
+              <p class="timer-phase-current" id="timerPhase">準備</p>
+            </div>
             <div class="timer-time" id="timerTime">00:10</div>
             <div class="timer-meta">
               <span id="timerRound">ROUND 1 / 3</span>
               <span id="timerStatus">待機中</span>
             </div>
+            <p class="timer-next" id="timerNext">
+              <span class="timer-next-label">NEXT</span>
+              <span class="timer-next-value" id="timerNextValue">—</span>
+            </p>
           </section>
 
           <div class="timer-actions">
@@ -483,6 +489,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=69"></script>
+  <script src="./app.js?v=70"></script>
 </body>
 </html>
