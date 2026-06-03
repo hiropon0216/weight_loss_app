@@ -60,6 +60,7 @@ let settingsFeedbackTimer = null;
 let workoutFeedbackTimer = null;
 let timerFeedbackTimer = null;
 let timerAudioContext = null;
+let gongBuffer = null;
 let roundTimerRuntime = {
   status: "idle",
   stageIndex: 0,
@@ -764,6 +765,7 @@ function startRoundTimer() {
   roundTimerRuntime.remainingMs = roundTimerRuntime.remainingMs ?? stage.durationSec * 1000;
   roundTimerRuntime.phaseEndsAt = Date.now() + roundTimerRuntime.remainingMs;
   roundTimerRuntime.lastCountdownSecond = null;
+  roundTimerRuntime.tenSecondPlayed = false;
   playTimerTone("gong");
   startRoundTimerTick();
   renderRoundTimer();
@@ -803,6 +805,10 @@ function updateRoundTimerTick() {
 
   roundTimerRuntime.remainingMs = Math.max(0, roundTimerRuntime.phaseEndsAt - Date.now());
   const countdownSecond = Math.ceil(roundTimerRuntime.remainingMs / 1000);
+  if (countdownSecond === 10 && !roundTimerRuntime.tenSecondPlayed) {
+    roundTimerRuntime.tenSecondPlayed = true;
+    playTimerTone("clapper");
+  }
   if (countdownSecond > 0 && countdownSecond <= 3 && countdownSecond !== roundTimerRuntime.lastCountdownSecond) {
     roundTimerRuntime.lastCountdownSecond = countdownSecond;
     playTimerTone("countdown");
@@ -824,6 +830,7 @@ function advanceRoundTimerStage() {
   roundTimerRuntime.remainingMs = nextStage.durationSec * 1000;
   roundTimerRuntime.phaseEndsAt = Date.now() + roundTimerRuntime.remainingMs;
   roundTimerRuntime.lastCountdownSecond = null;
+  roundTimerRuntime.tenSecondPlayed = false;
   playTimerTone(nextStage.phase);
 }
 
@@ -840,60 +847,166 @@ function playTimerTone(type) {
   if (!currentRoundTimer().sound) return;
   try {
     timerAudioContext = timerAudioContext || new (window.AudioContext || window.webkitAudioContext)();
-    if (type === "gong") {
-      playTimerGong();
-      return;
-    }
-    const now = timerAudioContext.currentTime;
-    const frequencies = {
-      prep: 660,
-      work: 880,
-      rest: 520,
-      countdown: 740,
-      complete: 980,
-    };
-    const oscillator = timerAudioContext.createOscillator();
-    const gain = timerAudioContext.createGain();
-    oscillator.frequency.value = frequencies[type] || 660;
-    oscillator.type = type === "complete" ? "triangle" : "sine";
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.exponentialRampToValueAtTime(0.16, now + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + (type === "complete" ? 0.42 : 0.16));
-    oscillator.connect(gain);
-    gain.connect(timerAudioContext.destination);
-    oscillator.start(now);
-    oscillator.stop(now + (type === "complete" ? 0.44 : 0.18));
+    if (timerAudioContext.state === "suspended") timerAudioContext.resume();
+    // 効果音は3種類のみ：拍子木(残り10秒) / ゴング(フェーズ切替) / カウントダウン(残り3秒)
+    if (type === "clapper") { playClapper(); return; }
+    if (type === "countdown") { playCountdownBeep(); return; }
+    playGong();
   } catch {
     // Audio is best-effort only.
   }
 }
 
-function playTimerGong() {
-  const now = timerAudioContext.currentTime;
-  const output = timerAudioContext.createGain();
-  output.gain.setValueAtTime(0.001, now);
-  output.gain.exponentialRampToValueAtTime(0.28, now + 0.03);
-  output.gain.exponentialRampToValueAtTime(0.001, now + 1.55);
-  output.connect(timerAudioContext.destination);
+function playCountdownBeep() {
+  const ctx = timerAudioContext;
+  const now = ctx.currentTime;
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.frequency.value = 740;
+  oscillator.type = "sine";
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.exponentialRampToValueAtTime(0.14, now + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+  oscillator.start(now);
+  oscillator.stop(now + 0.16);
+}
 
-  [
-    { frequency: 210, type: "triangle", detune: -8 },
-    { frequency: 318, type: "sine", detune: 5 },
-    { frequency: 472, type: "triangle", detune: 13 },
-  ].forEach((part) => {
-    const oscillator = timerAudioContext.createOscillator();
-    const gain = timerAudioContext.createGain();
-    oscillator.frequency.value = part.frequency;
-    oscillator.detune.value = part.detune;
-    oscillator.type = part.type;
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.exponentialRampToValueAtTime(0.5, now + 0.018);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.35);
-    oscillator.connect(gain);
-    gain.connect(output);
-    oscillator.start(now);
-    oscillator.stop(now + 1.55);
+// 拍子木（カチン）：硬い木がぶつかる、鋭く乾いた打撃音。
+function playClapper() {
+  const ctx = timerAudioContext;
+  const t = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 0.5;
+  master.connect(ctx.destination);
+
+  // 鋭い打撃（高域ノイズのクリック）
+  const dur = 0.05;
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i += 1) {
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 3);
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const highpass = ctx.createBiquadFilter();
+  highpass.type = "highpass";
+  highpass.frequency.value = 1500;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.6, t);
+  noiseGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+  noise.connect(highpass);
+  highpass.connect(noiseGain);
+  noiseGain.connect(master);
+  noise.start(t);
+  noise.stop(t + dur);
+
+  // 木の響き（短い高音の余韻）
+  [1900, 2600].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.value = freq;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(i === 0 ? 0.3 : 0.18, t + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    osc.connect(gain);
+    gain.connect(master);
+    osc.start(t);
+    osc.stop(t + 0.08);
   });
+}
+
+// ボクシングのゴング：実録音(gong.mp3)を1回そのまま再生（単発ゴング）。
+// 未ロード/デコード失敗時はFM合成(playGongSynth)にフォールバック。
+function playGong() {
+  const ctx = timerAudioContext;
+  if (gongBuffer && ctx) {
+    const src = ctx.createBufferSource();
+    src.buffer = gongBuffer;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.9;
+    src.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+    return;
+  }
+  playGongSynth();
+}
+
+// ゴング音源を事前読み込み（初回のフェーズ切替から実録音で鳴らすため）。
+function preloadGong() {
+  try {
+    timerAudioContext = timerAudioContext || new (window.AudioContext || window.webkitAudioContext)();
+    fetch("./gong.mp3")
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error("gong fetch failed"))))
+      .then((ab) => timerAudioContext.decodeAudioData(ab))
+      .then((buf) => { gongBuffer = buf; })
+      .catch(() => { gongBuffer = null; });
+  } catch {
+    // best-effort（合成フォールバックに任せる）
+  }
+}
+
+// FM合成のゴング（実録音が使えない場合のフォールバック）。
+function playGongSynth() {
+  const ctx = timerAudioContext;
+  const t = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 0.5;
+  master.connect(ctx.destination);
+
+  // ハンマー打撃の金属的アタック（高域ノイズ）
+  const noiseDur = 0.06;
+  const nbuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * noiseDur), ctx.sampleRate);
+  const nd = nbuf.getChannelData(0);
+  for (let i = 0; i < nd.length; i += 1) {
+    nd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / nd.length, 2);
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = nbuf;
+  const nbp = ctx.createBiquadFilter();
+  nbp.type = "highpass";
+  nbp.frequency.value = 2500;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.45, t);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+  noise.connect(nbp);
+  nbp.connect(ng);
+  ng.connect(master);
+  noise.start(t);
+  noise.stop(t + noiseDur);
+
+  // FMベル声部：carrier + 非整数比のmodulator。変調指数が減衰し音色が明→暗へ。
+  const fmVoice = (carrierHz, ratio, peakIndex, level, dur) => {
+    const carrier = ctx.createOscillator();
+    carrier.type = "sine";
+    carrier.frequency.value = carrierHz;
+    const mod = ctx.createOscillator();
+    mod.type = "sine";
+    mod.frequency.value = carrierHz * ratio;
+    const modGain = ctx.createGain();
+    modGain.gain.setValueAtTime(peakIndex, t);
+    modGain.gain.exponentialRampToValueAtTime(1, t + dur * 0.5);
+    mod.connect(modGain);
+    modGain.connect(carrier.frequency);
+    const amp = ctx.createGain();
+    amp.gain.setValueAtTime(0.0001, t);
+    amp.gain.exponentialRampToValueAtTime(level, t + 0.004);
+    amp.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    carrier.connect(amp);
+    amp.connect(master);
+    mod.start(t);
+    carrier.start(t);
+    mod.stop(t + dur + 0.05);
+    carrier.stop(t + dur + 0.05);
+  };
+
+  // 明るい金属ベル。2声をわずかに離調して約4Hzのうなり、上音用にもう1声。
+  fmVoice(784, 1.41, 784 * 3, 0.5, 2.6);
+  fmVoice(788, 1.41, 788 * 3, 0.32, 2.6);
+  fmVoice(784, 2.76, 784 * 2, 0.16, 1.4);
 }
 
 function goalSafety(heightCm, goalKg, goalDateIso) {
@@ -1955,3 +2068,4 @@ if ("serviceWorker" in navigator) {
 
 bindEvents();
 render();
+preloadGong();
