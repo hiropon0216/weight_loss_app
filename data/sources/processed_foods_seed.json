@@ -1,0 +1,232 @@
+[
+  {
+    "id": "processed:ice-cream-regular-fat",
+    "name": "アイスクリーム 普通脂肪",
+    "kana": "あいすくりーむ ふつうしぼう",
+    "aliases": ["アイス", "アイスクリーム", "冷菓"],
+    "categoryId": "frozen-desserts",
+    "category": "冷菓・氷菓",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=13_13043_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:potato-chips",
+    "name": "ポテトチップス",
+    "kana": "ぽてとちっぷす",
+    "aliases": ["ポテチ", "スナック菓子"],
+    "categoryId": "snacks",
+    "category": "スナック菓子",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=15_15103_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:tart",
+    "name": "タルト",
+    "kana": "たると",
+    "aliases": ["洋菓子"],
+    "categoryId": "western-cakes",
+    "category": "洋菓子",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=15_15133_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:hard-biscuit",
+    "name": "ハードビスケット",
+    "kana": "はーどびすけっと",
+    "aliases": ["ビスケット", "クッキー", "焼き菓子"],
+    "categoryId": "baked-sweets",
+    "category": "焼き菓子",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=15_15097_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:milk-chocolate",
+    "name": "ミルクチョコレート",
+    "kana": "みるくちょこれーと",
+    "aliases": ["チョコ", "チョコレート"],
+    "categoryId": "chocolate-sweets",
+    "category": "チョコレート菓子",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=15_15116_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:manju-koshian",
+    "name": "まんじゅう こしあん入り",
+    "kana": "まんじゅう こしあんいり",
+    "aliases": ["饅頭", "和菓子"],
+    "categoryId": "japanese-sweets",
+    "category": "和菓子",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=15_15033_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:caramel",
+    "name": "キャラメル",
+    "kana": "きゃらめる",
+    "aliases": ["キャンディ", "飴"],
+    "categoryId": "candy-gummy",
+    "category": "キャンディ・グミ類",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=15_15105_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:wiener-sausage",
+    "name": "ウインナーソーセージ",
+    "kana": "ういんなーそーせーじ",
+    "aliases": ["ソーセージ", "食肉加工品"],
+    "categoryId": "processed-meat",
+    "category": "食肉加工品",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=11_11186_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:process-cheese",
+    "name": "プロセスチーズ",
+    "kana": "ぷろせすちーず",
+    "aliases": ["チーズ", "乳製品"],
+    "categoryId": "dairy-products",
+    "category": "乳製品",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=13_13040_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:boiled-egg",
+    "name": "ゆで卵",
+    "kana": "ゆでたまご",
+    "aliases": ["卵", "卵加工品"],
+    "categoryId": "processed-egg",
+    "category": "卵加工品",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=12_12005_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:kamaboko-steamed",
+    "name": "蒸しかまぼこ",
+    "kana": "むしかまぼこ",
+    "aliases": ["かまぼこ", "練り製品"],
+    "categoryId": "fish-paste",
+    "category": "練り製品",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=10_10379_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:surume",
+    "name": "するめ",
+    "kana": "するめ",
+    "aliases": ["乾燥いか", "塩干品"],
+    "categoryId": "salted-dried-seafood",
+    "category": "塩干品・乾燥品",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=10_10353_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:ika-shiokara",
+    "name": "いか塩辛",
+    "kana": "いかしおから",
+    "aliases": ["塩辛", "漬け込み"],
+    "categoryId": "salted-pickled",
+    "category": "塩蔵・漬け込み品",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=10_10358_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:salmon-canned-water",
+    "name": "からふとます水煮缶詰",
+    "kana": "からふとます みずに かんづめ",
+    "aliases": ["鮭缶", "缶詰"],
+    "categoryId": "canned-bottled",
+    "category": "缶詰・瓶詰",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=10_10129_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:instant-fried-noodles-seasoned",
+    "name": "即席中華めん 油揚げ味付け",
+    "kana": "そくせきちゅうかめん あぶらあげ あじつけ",
+    "aliases": ["インスタントラーメン", "カップ麺", "即席麺"],
+    "categoryId": "instant-foods",
+    "category": "インスタント食品",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=01_01056_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:natto",
+    "name": "糸引き納豆",
+    "kana": "いとひきなっとう",
+    "aliases": ["納豆", "大豆加工品"],
+    "categoryId": "soy-processed",
+    "category": "大豆加工品",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=04_04046_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:dried-tomato",
+    "name": "ドライトマト",
+    "kana": "どらいとまと",
+    "aliases": ["乾燥トマト", "野菜加工品"],
+    "categoryId": "vegetable-fruit-processed",
+    "category": "野菜・果実加工品",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=06_06370_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:cola",
+    "name": "コーラ",
+    "kana": "こーら",
+    "aliases": ["炭酸飲料", "清涼飲料水"],
+    "categoryId": "soft-drinks",
+    "category": "清涼飲料水",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=16_16053_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:sencha-infusion",
+    "name": "せん茶 浸出液",
+    "kana": "せんちゃ しんしゅつえき",
+    "aliases": ["緑茶", "お茶"],
+    "categoryId": "tea-coffee",
+    "category": "茶・コーヒー類",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=16_16037_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:beer-regular",
+    "name": "ビール 淡色",
+    "kana": "びーる たんしょく",
+    "aliases": ["ビール", "アルコール"],
+    "categoryId": "alcoholic-drinks",
+    "category": "アルコール飲料",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=16_16006_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:soy-sauce-koikuchi",
+    "name": "こいくちしょうゆ",
+    "kana": "こいくちしょうゆ",
+    "aliases": ["醤油", "しょうゆ"],
+    "categoryId": "basic-seasonings",
+    "category": "基本調味料",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=17_17007_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:mayonnaise-whole-egg",
+    "name": "マヨネーズ 全卵型",
+    "kana": "まよねーず ぜんらんがた",
+    "aliases": ["マヨネーズ", "複合調味料"],
+    "categoryId": "compound-seasonings",
+    "category": "複合調味料",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=17_17042_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  },
+  {
+    "id": "processed:canola-oil",
+    "name": "なたね油",
+    "kana": "なたねあぶら",
+    "aliases": ["キャノーラ油", "油"],
+    "categoryId": "oils-fats",
+    "category": "油脂類",
+    "sourceUrl": "https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=14_14008_7",
+    "sourceName": "文部科学省 食品成分データベース"
+  }
+]

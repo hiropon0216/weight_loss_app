@@ -1,0 +1,51 @@
+name: Refresh food masters
+
+on:
+  workflow_dispatch:
+  schedule:
+    # FoodDB updates are irregular and infrequent, so a monthly refresh plus manual dispatch is enough.
+    # 18:00 UTC on the 1st runs at 03:00 JST on the 2nd.
+    - cron: "0 18 1 * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    name: Rebuild static nutrition masters
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Rebuild generic food master
+        run: node scripts/build_generic_foods_core.mjs
+
+      - name: Rebuild processed food master from primary sources
+        run: node scripts/build_processed_foods_core.mjs
+
+      - name: Check generated files
+        run: |
+          git diff --check
+          git diff -- data/generic_foods_core.json data/processed_foods_core.json data/sources/processed_foods_seed.json
+
+      - name: Create refresh pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: codex/refresh-food-masters
+          delete-branch: true
+          commit-message: Refresh static food masters
+          title: "[codex] Refresh static food masters"
+          body: |
+            Rebuilds the static food masters.
+
+            - Validates and normalizes `data/generic_foods_core.json`
+            - Re-fetches processed-food nutrients from the FoodDB detail URLs in `data/sources/processed_foods_seed.json`
+            - Keeps generated changes in a reviewable pull request
+          labels: data, automation

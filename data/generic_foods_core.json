@@ -1,0 +1,377 @@
+[
+  {
+    "id": "core:banana",
+    "name": "バナナ 生",
+    "kana": "ばなな なま",
+    "aliases": [
+      "バナナ",
+      "ばなな",
+      "banana"
+    ],
+    "category": "果実類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "生・100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 93,
+      "proteinG": 1.1,
+      "fatG": 0.2,
+      "carbsG": 22.5,
+      "fiberG": 1.1,
+      "saltG": 0
+    }
+  },
+  {
+    "id": "core:oatmeal",
+    "name": "オートミール",
+    "kana": "おーとみーる",
+    "aliases": [
+      "オートミール",
+      "oats",
+      "oatmeal"
+    ],
+    "category": "穀類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "乾燥・100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 350,
+      "proteinG": 13.7,
+      "fatG": 5.7,
+      "carbsG": 69.1,
+      "fiberG": 9.4,
+      "saltG": 0
+    }
+  },
+  {
+    "id": "core:rice-cooked",
+    "name": "ごはん 精白米",
+    "kana": "ごはん せいはくまい",
+    "aliases": [
+      "ごはん",
+      "白米",
+      "米",
+      "ライス",
+      "rice"
+    ],
+    "category": "穀類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "炊飯後・100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 156,
+      "proteinG": 2.5,
+      "fatG": 0.3,
+      "carbsG": 37.1,
+      "fiberG": 1.5,
+      "saltG": 0
+    }
+  },
+  {
+    "id": "core:sesame-dressing",
+    "name": "ごまドレッシング",
+    "kana": "ごまどれっしんぐ",
+    "aliases": [
+      "ごまドレ",
+      "胡麻ドレッシング",
+      "ドレッシング",
+      "dressing"
+    ],
+    "category": "調味料及び香辛料類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 399,
+      "proteinG": 3.5,
+      "fatG": 35,
+      "carbsG": 17,
+      "fiberG": 1.1,
+      "saltG": 3.3
+    }
+  },
+  {
+    "id": "core:mayonnaise-whole-egg",
+    "name": "マヨネーズ 全卵型",
+    "kana": "まよねーず ぜんらんがた",
+    "aliases": [
+      "マヨネーズ",
+      "マヨ",
+      "mayonnaise"
+    ],
+    "category": "調味料及び香辛料類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 668,
+      "proteinG": 1.4,
+      "fatG": 76,
+      "carbsG": 3.6,
+      "fiberG": 0,
+      "saltG": 1.9
+    }
+  },
+  {
+    "id": "core:natto",
+    "name": "納豆",
+    "kana": "なっとう",
+    "aliases": [
+      "納豆",
+      "なっとう",
+      "natto"
+    ],
+    "category": "豆類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 184,
+      "proteinG": 16.5,
+      "fatG": 10,
+      "carbsG": 12.1,
+      "fiberG": 6.7,
+      "saltG": 0
+    }
+  },
+  {
+    "id": "core:tofu-firm",
+    "name": "木綿豆腐",
+    "kana": "もめんどうふ",
+    "aliases": [
+      "豆腐",
+      "木綿",
+      "とうふ",
+      "tofu"
+    ],
+    "category": "豆類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 73,
+      "proteinG": 7,
+      "fatG": 4.9,
+      "carbsG": 1.5,
+      "fiberG": 1.1,
+      "saltG": 0
+    }
+  },
+  {
+    "id": "core:chicken-breast-skinless",
+    "name": "鶏むね肉 皮なし",
+    "kana": "とりむねにく かわなし",
+    "aliases": [
+      "鶏胸肉",
+      "鶏むね",
+      "鶏むね肉",
+      "チキン",
+      "chicken breast"
+    ],
+    "category": "肉類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "生・皮なし・100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 105,
+      "proteinG": 23.3,
+      "fatG": 1.9,
+      "carbsG": 0.1,
+      "fiberG": 0,
+      "saltG": 0.1
+    }
+  },
+  {
+    "id": "core:plain-yogurt",
+    "name": "ヨーグルト 全脂無糖",
+    "kana": "よーぐると ぜんしむとう",
+    "aliases": [
+      "ヨーグルト",
+      "無糖ヨーグルト",
+      "yogurt"
+    ],
+    "category": "乳類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 56,
+      "proteinG": 3.6,
+      "fatG": 3,
+      "carbsG": 4.9,
+      "fiberG": 0,
+      "saltG": 0.1
+    }
+  },
+  {
+    "id": "core:cabbage-raw",
+    "name": "キャベツ 生",
+    "kana": "きゃべつ なま",
+    "aliases": [
+      "キャベツ",
+      "きゃべつ",
+      "cabbage"
+    ],
+    "category": "野菜類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "生・可食部100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 21,
+      "proteinG": 1.3,
+      "fatG": 0.2,
+      "carbsG": 5.2,
+      "fiberG": 1.8,
+      "saltG": 0
+    }
+  },
+  {
+    "id": "core:cucumber-raw",
+    "name": "きゅうり 生",
+    "kana": "きゅうり なま",
+    "aliases": [
+      "きゅうり",
+      "キュウリ",
+      "cucumber"
+    ],
+    "category": "野菜類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "生・可食部100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 13,
+      "proteinG": 1,
+      "fatG": 0.1,
+      "carbsG": 3,
+      "fiberG": 1.1,
+      "saltG": 0
+    }
+  },
+  {
+    "id": "core:tomato-raw",
+    "name": "トマト 生",
+    "kana": "とまと なま",
+    "aliases": [
+      "トマト",
+      "とまと",
+      "tomato"
+    ],
+    "category": "野菜類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "生・可食部100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 20,
+      "proteinG": 0.7,
+      "fatG": 0.1,
+      "carbsG": 4.7,
+      "fiberG": 1,
+      "saltG": 0
+    }
+  },
+  {
+    "id": "core:broccoli-boiled",
+    "name": "ブロッコリー ゆで",
+    "kana": "ぶろっこりー ゆで",
+    "aliases": [
+      "ブロッコリー",
+      "ぶろっこりー",
+      "broccoli"
+    ],
+    "category": "野菜類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "ゆで・可食部100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 30,
+      "proteinG": 3.9,
+      "fatG": 0.4,
+      "carbsG": 5.2,
+      "fiberG": 4.3,
+      "saltG": 0
+    }
+  },
+  {
+    "id": "core:lettuce-raw",
+    "name": "レタス 生",
+    "kana": "れたす なま",
+    "aliases": [
+      "レタス",
+      "れたす",
+      "lettuce"
+    ],
+    "category": "野菜類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "生・可食部100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 11,
+      "proteinG": 0.6,
+      "fatG": 0.1,
+      "carbsG": 2.8,
+      "fiberG": 1.1,
+      "saltG": 0
+    }
+  },
+  {
+    "id": "core:olive-oil",
+    "name": "オリーブ油",
+    "kana": "おりーぶゆ",
+    "aliases": [
+      "オリーブオイル",
+      "油",
+      "olive oil"
+    ],
+    "category": "油脂類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 894,
+      "proteinG": 0,
+      "fatG": 100,
+      "carbsG": 0,
+      "fiberG": 0,
+      "saltG": 0
+    }
+  },
+  {
+    "id": "core:egg-whole",
+    "name": "鶏卵 全卵",
+    "kana": "けいらん ぜんらん",
+    "aliases": [
+      "卵",
+      "たまご",
+      "玉子",
+      "egg"
+    ],
+    "category": "卵類",
+    "sourceType": "mext_static",
+    "unitMode": "gram",
+    "unitLabel": "100g",
+    "ediblePortionNote": "生・100gあたり",
+    "nutrientsPer100g": {
+      "energyKcal": 142,
+      "proteinG": 12.2,
+      "fatG": 10.2,
+      "carbsG": 0.4,
+      "fiberG": 0,
+      "saltG": 0.4
+    }
+  }
+]

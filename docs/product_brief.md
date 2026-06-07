@@ -1,6 +1,6 @@
 # Product Brief
 
-Last updated: 2026-05-30
+Last updated: 2026-06-08
 
 ## Product concept
 
@@ -49,6 +49,14 @@ MVPでは含めないもの。
 - Apple Health / Google Fit連携
 - AIチャットによる自由相談
 - SNS共有
+
+## Current next scope
+
+2026-06-08時点の次スコープは、簡易な食事チェックを、食材DB、加工食品静的マスタ、バーコード、手入力補完、直近履歴を持つ食事実績へ置き換えること。
+
+ただし、プロダクトの中心は引き続き「体重トレンドから今日の行動を決める減量コーチ」である。食事管理は、カロリーとPFCを細かく見せること自体ではなく、停滞時に食事量や脂質を具体的に調整できる状態を作るために追加する。
+
+詳細は [nutrition_management_redesign.md](nutrition_management_redesign.md) と [food_master_refresh.md](food_master_refresh.md) に置く。
 
 ## Success metrics
 

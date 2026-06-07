@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=72">
+  <link rel="stylesheet" href="./styles.css?v=89">
 </head>
 <body>
   <div id="app">
@@ -15,6 +15,7 @@
         <p class="eyebrow">Trend-first weight coach</p>
         <h1>体重コーチ</h1>
       </div>
+      <button class="settings-icon-button" id="openSettingsView" type="button" aria-label="設定">⚙</button>
     </header>
 
     <main>
@@ -48,8 +49,8 @@
             <strong id="monthEntries">0回</strong>
           </article>
           <article>
-            <span>総合評価</span>
-            <strong class="rank-badge rank-d" id="dailyRank">D</strong>
+            <span>日次判定</span>
+            <strong class="decision-stamp decision-fail small" id="dailyRank">不合格</strong>
           </article>
         </div>
 
@@ -69,11 +70,62 @@
           <div class="form-row">
             <label for="weightInput">実測体重</label>
             <div class="input-unit">
-              <input id="weightInput" type="number" min="30" max="250" step="0.1" inputmode="decimal" placeholder="78.0" required>
+              <input id="weightInput" type="text" inputmode="numeric" autocomplete="off" placeholder="78.0" required>
               <span>kg</span>
             </div>
           </div>
         </form>
+
+        <section class="section-block nutrition-summary" aria-labelledby="recordNutritionTitle">
+          <div class="section-head inline-head">
+            <div>
+              <h2 id="recordNutritionTitle">食事実績</h2>
+              <p>今日食べたものの摂取量を合計します。</p>
+            </div>
+            <button class="ghost-button compact-button" id="openFoodView" type="button">食事を追加</button>
+          </div>
+          <div class="intake-total-card">
+            <span>今日の摂取</span>
+            <strong id="recordNutritionKcal">0 kcal</strong>
+          </div>
+          <div class="nutrition-macro-grid">
+            <article id="recordProteinCard">
+              <span>P（たんぱく質）</span>
+              <strong id="recordNutritionProtein">0.0g</strong>
+            </article>
+            <article id="recordFatCard">
+              <span>F（脂質）</span>
+              <strong id="recordNutritionFat">0.0g</strong>
+            </article>
+            <article id="recordCarbsCard">
+              <span>C（炭水化物）</span>
+              <strong id="recordNutritionCarbs">0.0g</strong>
+            </article>
+          </div>
+          <p class="pfc-guidance-note" id="recordPfcNote">PFCバランスは食事登録後に表示します。</p>
+          <div class="intake-guidance-grid">
+            <article>
+              <span>下限目安</span>
+              <strong id="recordIntakeFloor">0 kcal</strong>
+            </article>
+            <article>
+              <span>上限目安</span>
+              <strong id="recordIntakeCeiling">0 kcal</strong>
+            </article>
+          </div>
+          <div class="intake-gauge" id="recordIntakeGauge" aria-label="摂取kcalゲージ">
+            <span class="intake-gauge-fill"></span>
+            <span class="intake-gauge-line lower" data-label="下限"></span>
+            <span class="intake-gauge-line upper" data-label="上限"></span>
+          </div>
+          <div class="intake-gauge-legend" aria-label="摂取kcalゲージの凡例">
+            <span><i class="legend-dot lower"></i>下限</span>
+            <span><i class="legend-dot upper"></i>上限</span>
+          </div>
+          <p class="intake-guidance-note" id="recordIntakeNote">基礎代謝と目標カロリー差から食事の目安を表示します。</p>
+          <div class="meal-log-list compact" id="recordMealLogList"></div>
+          <p class="empty-state" id="recordMealLogEmpty">まだ食事実績はありません。</p>
+        </section>
 
         <div class="metric-grid">
           <article class="metric-card">
@@ -104,37 +156,6 @@
           </div>
           <div class="exercise-motivation" id="exerciseMotivationPanel" aria-live="polite"></div>
           <div class="generated-menu" id="recordGeneratedMenu"></div>
-        </section>
-
-        <section class="section-block">
-          <div class="section-head">
-            <h2>食事チェック</h2>
-          </div>
-          <div id="dailyChecks">
-            <div class="check-block">
-              <div class="check-subhead">
-                <h3>Must</h3>
-              </div>
-              <div class="check-grid">
-                <label><input type="checkbox" data-check="noSweets"><span class="check-text">お菓子なし</span></label>
-                <label><input type="checkbox" data-check="noJuiceAlcohol"><span class="check-text">酒・ジュースなし</span></label>
-                <label><input type="checkbox" data-check="carbPortion"><span class="check-text">米・麺・パンは1食150gまで</span></label>
-                <label><input type="checkbox" data-check="noFried"><span class="check-text">揚げ物なし</span></label>
-              </div>
-            </div>
-            <div class="check-block">
-              <div class="check-subhead">
-                <h3>Plus</h3>
-              </div>
-              <div class="check-grid">
-                <label><input type="checkbox" data-check="protein100"><span class="check-text">たんぱく質100g</span></label>
-                <label><input type="checkbox" data-check="noLateSnack"><span class="check-text">21時以降の食事なし</span></label>
-                <label><input type="checkbox" data-check="vegetables350"><span class="check-text">野菜を摂取</span></label>
-                <label><input type="checkbox" data-check="water1500"><span class="check-text">水・お茶1.5L以上</span></label>
-              </div>
-            </div>
-          </div>
-          <textarea id="dailyNote" rows="3" placeholder="体調、睡眠、外食など"></textarea>
         </section>
 
         <section class="section-block burn-summary" aria-labelledby="burnSummaryTitle">
@@ -191,7 +212,7 @@
                 </g>
               </svg>
             </div>
-            <p id="fatBurnText">食事チェックと運動実績で脂肪を炙る火力が上がります。</p>
+            <p id="fatBurnText">食事実績を登録すると、今日のカロリー収支を表示します。</p>
           </div>
         </section>
 
@@ -199,43 +220,132 @@
           <button class="primary-button" id="saveRecord" type="button">保存</button>
           <button class="ghost-button" id="deleteRecord" type="button">削除</button>
         </div>
-      </section>
+        <p class="record-save-status" id="saveStatus" aria-live="polite">端末内保存</p>
 
-      <section class="view" id="view-trend" aria-labelledby="trendTitle">
-        <div class="section-head">
-          <h2 id="trendTitle">推移</h2>
-          <p>薄い点が実測、太い線がトレンド体重です。</p>
-        </div>
-        <div class="chart-wrap">
-          <canvas id="weightChart" width="720" height="420"></canvas>
-        </div>
-        <div class="metric-grid">
-          <article class="metric-card">
-            <span>7日平均</span>
-            <strong id="avg7">--.- kg</strong>
-          </article>
-          <article class="metric-card">
-            <span>週平均</span>
-            <strong id="weekAvg">--.- kg</strong>
-          </article>
-          <article class="metric-card">
-            <span>現在ペース</span>
-            <strong id="currentPace">-- kg/週</strong>
-          </article>
-          <article class="metric-card">
-            <span>必要ペース</span>
-            <strong id="requiredPace">-- kg/週</strong>
-          </article>
-        </div>
-        <div class="notice" id="paceNotice">目標と期限を設定すると必要ペースを表示します。</div>
-        <section class="weekly-summary" aria-labelledby="weeklySummaryTitle">
+        <section class="section-block trend-in-record" aria-labelledby="trendTitle">
+          <div class="section-head">
+            <h2 id="trendTitle">推移</h2>
+            <p>薄い点が実測、太い線がトレンド体重です。</p>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="weightChart" width="720" height="420"></canvas>
+          </div>
+          <div class="metric-grid">
+            <article class="metric-card">
+              <span>7日平均</span>
+              <strong id="avg7">--.- kg</strong>
+            </article>
+            <article class="metric-card">
+              <span>週平均</span>
+              <strong id="weekAvg">--.- kg</strong>
+            </article>
+            <article class="metric-card">
+              <span>現在ペース</span>
+              <strong id="currentPace">-- kg/週</strong>
+            </article>
+            <article class="metric-card">
+              <span>必要ペース</span>
+              <strong id="requiredPace">-- kg/週</strong>
+            </article>
+          </div>
+          <div class="notice" id="paceNotice">目標と期限を設定すると必要ペースを表示します。</div>
+          <div class="weekly-summary" aria-labelledby="weeklySummaryTitle">
           <div>
-            <p class="panel-label">WEEKLY RANK</p>
-            <h2 id="weeklySummaryTitle">週間の総合評価</h2>
+            <p class="panel-label">WEEKLY CHECK</p>
+            <h2 id="weeklySummaryTitle">週間の総合判定</h2>
             <p id="weeklyRange">----/--/-- - ----/--/--</p>
           </div>
-          <strong class="rank-badge rank-d" id="weeklyRank">D</strong>
+          <strong class="decision-stamp decision-fail" id="weeklyRank">不合格</strong>
           <p id="weeklyComment">記録が増えると週間評価を表示します。</p>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="view-food" aria-labelledby="foodTitle">
+        <div class="section-head">
+          <h2 id="foodTitle">食事</h2>
+          <p>食材マスタ、バーコード、手入力で食事実績を登録します。</p>
+        </div>
+
+        <section class="section-block food-search-panel" aria-labelledby="foodSearchTitle">
+          <div class="section-head inline-head">
+            <div>
+              <h2 id="foodSearchTitle">食品検索</h2>
+              <p>食材名、大分類、バーコード番号を同じ欄で検索できます。</p>
+            </div>
+            <button class="ghost-button compact-button" id="showMasterFoodEntry" type="button">食材登録 📝</button>
+          </div>
+          <form class="unified-food-search" id="unifiedFoodSearchForm">
+            <div class="form-row">
+              <label for="foodSearchInput">検索</label>
+              <input id="foodSearchInput" type="search" autocomplete="off" placeholder="例: レタス / 野菜 / 49698626">
+            </div>
+            <div class="unified-search-actions">
+              <button class="ghost-button" id="scanBarcodeButton" type="button" aria-label="カメラでバーコードを読み取る">📷</button>
+              <button class="primary-button" type="submit">検索</button>
+            </div>
+            <input class="camera-file-input" id="barcodeImageInput" type="file" accept="image/*" capture="environment" hidden>
+          </form>
+          <p class="barcode-status" id="foodSearchStatus" aria-live="polite">バーコードはカメラ撮影、または番号入力で検索できます。</p>
+          <div class="food-result-list" id="foodSearchResults"></div>
+          <div class="master-food-entry-panel" id="masterFoodEntryPanel"></div>
+        </section>
+
+        <section class="section-block nutrition-summary" aria-labelledby="foodTodayTitle">
+          <div class="section-head">
+            <h2 id="foodTodayTitle">今日一日の摂取</h2>
+            <p id="foodTodayDate">----/--/--</p>
+          </div>
+          <div class="intake-total-card">
+            <span>摂取kcal</span>
+            <strong id="foodTodayKcal">0 kcal</strong>
+          </div>
+          <div class="nutrition-macro-grid">
+            <article id="foodProteinCard">
+              <span>P（たんぱく質）</span>
+              <strong id="foodTodayProtein">0.0g</strong>
+            </article>
+            <article id="foodFatCard">
+              <span>F（脂質）</span>
+              <strong id="foodTodayFat">0.0g</strong>
+            </article>
+            <article id="foodCarbsCard">
+              <span>C（炭水化物）</span>
+              <strong id="foodTodayCarbs">0.0g</strong>
+            </article>
+          </div>
+          <p class="pfc-guidance-note" id="foodPfcNote">PFCバランスは食事登録後に表示します。</p>
+          <div class="intake-guidance-grid">
+            <article>
+              <span>下限目安</span>
+              <strong id="foodIntakeFloor">0 kcal</strong>
+            </article>
+            <article>
+              <span>上限目安</span>
+              <strong id="foodIntakeCeiling">0 kcal</strong>
+            </article>
+          </div>
+          <div class="intake-gauge" id="foodIntakeGauge" aria-label="摂取kcalゲージ">
+            <span class="intake-gauge-fill"></span>
+            <span class="intake-gauge-line lower" data-label="下限"></span>
+            <span class="intake-gauge-line upper" data-label="上限"></span>
+          </div>
+          <div class="intake-gauge-legend" aria-label="摂取kcalゲージの凡例">
+            <span><i class="legend-dot lower"></i>下限</span>
+            <span><i class="legend-dot upper"></i>上限</span>
+          </div>
+          <p class="intake-guidance-note" id="foodIntakeNote">基礎代謝と目標カロリー差から食事の目安を表示します。</p>
+          <div class="pending-food-result" id="pendingFoodResult"></div>
+          <div class="meal-history-panel">
+            <div class="section-head compact-section-head">
+              <h3>最近食べたもの</h3>
+              <p>直近10件から、同じ内容をすぐに再登録できます。</p>
+            </div>
+            <div class="meal-history-list" id="foodMealHistoryList"></div>
+            <p class="empty-state" id="foodMealHistoryEmpty">まだ履歴がありません。</p>
+          </div>
+          <div class="meal-log-list" id="foodMealLogList"></div>
+          <p class="empty-state" id="foodMealLogEmpty">今日の食事はまだ登録されていません。</p>
         </section>
       </section>
 
@@ -413,65 +523,91 @@
         </div>
       </section>
 
-      <section class="view" id="view-settings" aria-labelledby="settingsTitle">
-        <div class="section-head">
-          <h2 id="settingsTitle">設定</h2>
-          <p>目標はいつでも変えられます。</p>
-        </div>
-        <form class="entry-form stacked" id="settingsForm">
-          <div class="form-row">
-            <label for="heightCm">身長</label>
-            <div class="input-unit">
-              <input id="heightCm" type="number" min="100" max="230" step="0.1" inputmode="decimal" required>
-              <span>cm</span>
+      <section class="settings-overlay" id="settingsOverlay" aria-hidden="true">
+        <div class="settings-drawer" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+          <div class="settings-drawer-head">
+            <div>
+              <h2 id="settingsTitle">設定</h2>
+              <p>目標はいつでも変えられます。</p>
             </div>
+            <button class="settings-close-button" id="closeSettingsView" type="button" aria-label="設定を閉じる">×</button>
           </div>
-          <div class="form-row">
-            <label for="startWeight">開始体重</label>
-            <div class="input-unit">
-              <input id="startWeight" type="number" min="30" max="250" step="0.1" inputmode="decimal" required>
-              <span>kg</span>
+          <form class="entry-form stacked" id="settingsForm">
+            <div class="form-row">
+              <label for="heightCm">身長</label>
+              <div class="input-unit">
+                <input id="heightCm" type="number" min="100" max="230" step="0.1" inputmode="decimal" required>
+                <span>cm</span>
+              </div>
             </div>
-          </div>
-          <div class="form-row">
-            <label for="goalWeight">目標体重</label>
-            <div class="input-unit">
-              <input id="goalWeight" type="number" min="30" max="250" step="0.1" inputmode="decimal" required>
-              <span>kg</span>
+            <div class="form-row">
+              <label for="age">年齢</label>
+              <div class="input-unit">
+                <input id="age" type="number" min="10" max="120" step="1" inputmode="numeric" required>
+                <span>歳</span>
+              </div>
             </div>
-          </div>
-          <div class="form-row">
-            <label for="goalDate">期限</label>
-            <input id="goalDate" type="date" required>
-          </div>
-          <p class="goal-notice ok is-hidden" id="goalNotice" aria-live="polite"></p>
-          <button class="primary-button settings-save-button" id="saveSettingsButton" type="submit">設定を保存</button>
-          <p class="settings-feedback" id="settingsFeedback" aria-live="polite"></p>
-        </form>
+            <div class="form-row">
+              <label for="sex">性別</label>
+              <select id="sex" required>
+                <option value="male">男性</option>
+                <option value="female">女性</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label for="startWeight">開始体重</label>
+              <div class="input-unit">
+                <input id="startWeight" type="number" min="30" max="250" step="0.1" inputmode="decimal" required>
+                <span>kg</span>
+              </div>
+            </div>
+            <div class="form-row">
+              <label for="goalWeight">目標体重</label>
+              <div class="input-unit">
+                <input id="goalWeight" type="number" min="30" max="250" step="0.1" inputmode="decimal" required>
+                <span>kg</span>
+              </div>
+            </div>
+            <div class="form-row">
+              <label for="goalDate">期限</label>
+              <input id="goalDate" type="date" required>
+            </div>
+            <p class="goal-notice ok is-hidden" id="goalNotice" aria-live="polite"></p>
+            <button class="primary-button settings-save-button" id="saveSettingsButton" type="submit">設定を保存</button>
+            <p class="settings-feedback" id="settingsFeedback" aria-live="polite"></p>
+          </form>
 
-        <div class="metric-grid">
-          <article class="metric-card">
-            <span>BMI25相当</span>
-            <strong id="bmi25Weight">--.- kg</strong>
-          </article>
-          <article class="metric-card">
-            <span>BMI22相当</span>
-            <strong id="bmi22Weight">--.- kg</strong>
-          </article>
-        </div>
+          <div class="metric-grid">
+            <article class="metric-card">
+              <span>基礎代謝</span>
+              <strong id="bmrValue">-- kcal</strong>
+            </article>
+            <article class="metric-card">
+              <span>目標カロリー差/日</span>
+              <strong id="requiredDeficitValue">-- kcal</strong>
+            </article>
+            <article class="metric-card">
+              <span>BMI25相当</span>
+              <strong id="bmi25Weight">--.- kg</strong>
+            </article>
+            <article class="metric-card">
+              <span>BMI22相当</span>
+              <strong id="bmi22Weight">--.- kg</strong>
+            </article>
+          </div>
 
-        <div class="settings-actions">
-          <button class="danger-button" id="resetData" type="button">全データ削除</button>
+          <div class="settings-actions">
+            <button class="danger-button" id="resetData" type="button">全データ削除</button>
+          </div>
         </div>
       </section>
     </main>
 
     <nav class="tabbar" aria-label="メインナビゲーション">
       <button class="tab active" data-view="today" type="button">記録</button>
+      <button class="tab" data-view="food" type="button">食事</button>
       <button class="tab" data-view="exercise" type="button">運動</button>
       <button class="tab" data-view="timer" type="button">タイマー</button>
-      <button class="tab" data-view="trend" type="button">推移</button>
-      <button class="tab" data-view="settings" type="button">設定</button>
     </nav>
   </div>
   <div class="result-modal" id="resultModal" aria-hidden="true">
@@ -485,6 +621,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=72"></script>
+  <script src="./app.js?v=89"></script>
 </body>
 </html>
