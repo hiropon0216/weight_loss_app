@@ -9,6 +9,7 @@ const CUSTOM_TIMER_PRESET_ID = "custom";
 const SAVED_TIMER_PRESET_PREFIX = "saved:";
 const GENERIC_FOOD_MASTER_URL = "./data/generic_foods_core.json?v=1";
 const PROCESSED_FOOD_MASTER_URL = "./data/processed_foods_core.json?v=1";
+const ESTIMATED_PROCESSED_FOOD_MASTER_URL = "./data/processed_foods_estimated.json?v=1";
 const EXERCISE_INTAKE_CREDIT_RATE = 0.75;
 const PFC_TARGETS = {
   proteinGPerKg: { min: 1.8, max: 2.2 },
@@ -393,11 +394,12 @@ async function fetchFoodMaster(url) {
 
 async function loadGenericFoodMaster() {
   try {
-    const [generic, processed] = await Promise.all([
+    const [generic, processed, estimatedProcessed] = await Promise.all([
       fetchFoodMaster(GENERIC_FOOD_MASTER_URL),
       fetchFoodMaster(PROCESSED_FOOD_MASTER_URL),
+      fetchFoodMaster(ESTIMATED_PROCESSED_FOOD_MASTER_URL),
     ]);
-    const normalized = [...generic, ...processed];
+    const normalized = [...generic, ...processed, ...estimatedProcessed];
     genericFoods = normalized.length ? normalized : FALLBACK_GENERIC_FOODS;
     renderFood();
     renderRecordNutritionSummary();

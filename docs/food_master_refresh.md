@@ -8,6 +8,10 @@
 - `data/processed_foods_core.json`
   - 加工食品の静的マスタ。
   - `data/sources/processed_foods_seed.json` に一次情報URLを持つ食品だけを採用する。
+- `data/processed_foods_estimated.json`
+  - 商品名で検索しやすくするための推定加工食品マスタ。
+  - アイス、菓子、カップ麺、飲料など、商品表示を想定した概算値を `1個`、`1袋`、`1食` などの実入力単位で保持する。
+  - 精度は80-90%程度の入力補助を目的とし、文部科学省FoodDB由来の `processed_foods_core.json` とは分離する。
 - `data/processed_food_categories.json`
   - 加工食品カテゴリの定義。
   - カテゴリは先に保持し、食品データは一次情報が確認できたものだけ追加する。
@@ -46,3 +50,11 @@ GitHub Actionsは月1回の定期実行と手動実行にする。
 初版は、指定カテゴリの箱をすべて定義したうえで、FoodDB明細から取得できた23件だけを採用した。
 
 未収載カテゴリは、一次情報を確認できるseedを追加してから増やす。特にレトルト食品、冷凍食品、惣菜（中食）はメーカー・商品単位で差が大きいため、バーコードAPIまたはユーザー登録マスタとの併用を前提にする。
+
+## 推定加工食品マスタ
+
+`data/processed_foods_estimated.json` は、バーコード検索や手入力前の補助候補として使う。
+
+このマスタは一次情報での厳密検証ではなく、よく食べる市販品をすばやく登録するための概算値である。信頼度を区別するため、各レコードの `sourceType` は `processed_estimated` とし、`ediblePortionNote` に `AI推定` と明記する。
+
+文部科学省FoodDBから再生成する `processed_foods_core.json` とは別ファイルにすることで、月次の洗い替えで推定商品データが消えないようにする。
