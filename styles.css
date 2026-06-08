@@ -1540,7 +1540,8 @@ input:focus, select:focus, textarea:focus {
 .food-search-panel input[type="search"],
 .barcode-search-form input,
 .pending-food-form input,
-.manual-food-form input {
+.manual-food-form input,
+.manual-food-form select {
   width: 100%;
   min-height: 48px;
   padding: 10px 12px;
@@ -1554,7 +1555,8 @@ input:focus, select:focus, textarea:focus {
 .food-search-panel input[type="search"]:focus,
 .barcode-search-form input:focus,
 .pending-food-form input:focus,
-.manual-food-form input:focus {
+.manual-food-form input:focus,
+.manual-food-form select:focus {
   border-color: rgba(33, 212, 198, 0.72);
   box-shadow: 0 0 0 3px rgba(33, 212, 198, 0.14);
 }
@@ -1679,7 +1681,20 @@ input:focus, select:focus, textarea:focus {
 .meal-history-panel {
   display: grid;
   gap: 8px;
-  margin: 14px 0;
+  margin: 2px 0 0;
+  padding: 10px;
+  border: 1px solid rgba(98, 220, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(8, 13, 30, 0.46);
+}
+
+.food-result-button.compact {
+  min-height: 56px;
+  padding: 8px;
+}
+
+.meal-history-panel[hidden] {
+  display: none;
 }
 
 .compact-section-head {
@@ -1710,6 +1725,12 @@ input:focus, select:focus, textarea:focus {
   gap: 10px;
 }
 
+.pending-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .pending-food-head h3 {
   margin: 3px 0 4px;
   font-size: 1.05rem;
@@ -1728,6 +1749,16 @@ input:focus, select:focus, textarea:focus {
   min-height: 34px;
   min-width: 36px;
   padding: 5px 9px;
+  line-height: 1;
+}
+
+.history-toggle-button {
+  display: inline-grid;
+  place-items: center;
+  min-height: 34px;
+  min-width: 38px;
+  padding: 5px 8px;
+  font-size: 1rem;
   line-height: 1;
 }
 
@@ -1766,6 +1797,56 @@ input:focus, select:focus, textarea:focus {
 .manual-pending-card .manual-food-form {
   display: grid;
   gap: 8px;
+}
+
+.master-builder-section {
+  display: grid;
+  gap: 10px;
+  margin: 4px 0 8px;
+  padding: 10px;
+  border: 1px solid rgba(98, 220, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(8, 13, 30, 0.5);
+}
+
+.master-builder-results {
+  max-height: 250px;
+  overflow: auto;
+}
+
+.master-builder-list {
+  display: grid;
+  gap: 8px;
+}
+
+.master-builder-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(108px, 0.5fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(154, 108, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(17, 22, 43, 0.74);
+}
+
+.master-builder-item strong,
+.master-builder-item span {
+  display: block;
+}
+
+.master-builder-item span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.master-builder-amount input {
+  min-height: 40px;
+}
+
+.master-builder-total {
+  margin-bottom: 0;
 }
 
 .barcode-product-card {
@@ -3385,6 +3466,8 @@ canvas {
   .pending-button-row { grid-template-columns: 1fr; }
   .meal-log-item,
   .meal-history-item { grid-template-columns: 1fr; }
+  .master-builder-item { grid-template-columns: 1fr; }
+  .master-builder-item .compact-button { width: 100%; }
   .meal-delete-button { width: 100%; }
   .manual-nutrition-grid { grid-template-columns: 1fr; }
   .settings-overlay { padding: 10px; }

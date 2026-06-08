@@ -98,6 +98,9 @@ let foodSearchQuery = "";
 let foodSearchStatus = "バーコードはカメラ撮影、または番号入力で検索できます。";
 let pendingFoodEntry = null;
 let masterFoodEntryOpen = false;
+let mealHistoryOpen = false;
+let masterBuilderQuery = "";
+let masterBuilderItems = [];
 let saveStatusTimer = null;
 let settingsFeedbackTimer = null;
 let workoutFeedbackTimer = null;
@@ -1020,7 +1023,7 @@ function renderFoodSearch() {
     return;
   }
   if (barcodeCandidate.length >= 8 && barcodeCandidate === compactQuery) {
-    container.innerHTML = `<p class="empty-state">バーコード番号は商品DBを検索し、結果を「今日一日の摂取」に表示します。</p>`;
+    container.innerHTML = `<p class="empty-state">バーコード番号は商品DBを検索し、結果を食事実績に表示します。</p>`;
     return;
   }
   const results = searchGenericFoods();
@@ -1077,7 +1080,7 @@ function renderPendingFoodResult() {
   const container = document.querySelector("#pendingFoodResult");
   if (!container) return;
   if (!pendingFoodEntry) {
-    container.innerHTML = `<p class="empty-state">検索結果を選択すると、ここで量を確認して登録できます。</p>`;
+    container.innerHTML = "";
     return;
   }
 
@@ -1166,6 +1169,128 @@ function renderPendingFoodResult() {
   renderManualPendingFood();
 }
 
+function masterBuilderFood(item) {
+  return getFoodById(item.foodId);
+}
+
+function defaultMasterBuilderAmount(food) {
+  return food?.unitMode === "serving" ? 1 : 100;
+}
+
+function masterBuilderTotals() {
+  return masterBuilderItems.reduce((totals, item) => {
+    const food = masterBuilderFood(item);
+    const amount = Number(item.amount) || 0;
+    if (!food || amount <= 0) return totals;
+    const nutrients = calculateFoodNutrients(food, amount);
+    totals.amountG += foodAmountG(food, amount);
+    totals.energyKcal += nutrients.energyKcal;
+    totals.proteinG += nutrients.proteinG;
+    totals.fatG += nutrients.fatG;
+    totals.carbsG += nutrients.carbsG;
+    totals.fiberG += nutrients.fiberG;
+    totals.saltG += nutrients.saltG;
+    return totals;
+  }, { ...emptyNutrients(), amountG: 0 });
+}
+
+function masterBuilderMarkup() {
+  const query = masterBuilderQuery.trim();
+  const results = query ? searchGenericFoods(query).slice(0, 8) : [];
+  const totals = roundNutrients(masterBuilderTotals());
+  const resultMarkup = query
+    ? results.length
+      ? results.map((food) => {
+        const nutrients = food.unitMode === "serving" ? food.nutrientsPerUnit : food.nutrientsPer100g;
+        return `
+          <button class="food-result-button compact" type="button" data-master-builder-add="${escapeHtml(food.id)}">
+            <span class="food-result-main">
+              <strong>${escapeHtml(food.name)}</strong>
+              <small>${escapeHtml(food.category)} / ${escapeHtml(food.ediblePortionNote)}</small>
+            </span>
+            <span class="food-result-kcal">${formatKcal(nutrients.energyKcal)} / ${escapeHtml(foodUnitBaseLabel(food))}</span>
+          </button>
+        `;
+      }).join("")
+      : `<p class="empty-state">該当する材料がありません。</p>`
+    : `<p class="empty-state">例: レタス、きゅうり、サラミなどを検索して材料に追加します。</p>`;
+
+  const itemMarkup = masterBuilderItems.length
+    ? masterBuilderItems.map((item) => {
+      const food = masterBuilderFood(item);
+      if (!food) return "";
+      const amount = Number(item.amount) || "";
+      const unit = foodAmountUnit(food);
+      const nutrients = calculateFoodNutrients(food, amount);
+      return `
+        <div class="master-builder-item">
+          <div>
+            <strong>${escapeHtml(food.name)}</strong>
+            <span>${escapeHtml(foodAmountLabel(food, amount))} / ${formatKcal(nutrients.energyKcal)}</span>
+          </div>
+          <div class="input-with-unit master-builder-amount">
+            <input type="number" min="0.1" step="${foodAmountStep(food)}" inputmode="decimal" value="${escapeHtml(String(amount))}" data-master-builder-amount="${escapeHtml(item.id)}">
+            <span>${escapeHtml(unit)}</span>
+          </div>
+          <button class="ghost-button compact-button" type="button" data-master-builder-remove="${escapeHtml(item.id)}">削除</button>
+        </div>
+      `;
+    }).join("")
+    : `<p class="empty-state">材料はまだ追加されていません。</p>`;
+
+  return `
+    <section class="master-builder-section" aria-label="既存マスタから作成">
+      <div class="section-head compact-section-head">
+        <h3>既存マスタから作成</h3>
+        <p>材料を追加すると、1食分のkcalとPFCを自動で合計します。</p>
+      </div>
+      <div class="form-row">
+        <label for="masterBuilderSearch">材料検索</label>
+        <input id="masterBuilderSearch" type="search" autocomplete="off" placeholder="例: レタス / きゅうり / サラミ" value="${escapeHtml(masterBuilderQuery)}">
+      </div>
+      <div class="food-result-list master-builder-results">${resultMarkup}</div>
+      <div class="master-builder-list">${itemMarkup}</div>
+      <div class="calculated-nutrition master-builder-total">
+        ${nutritionPreviewMarkup(`${masterBuilderItems.length}品`, totals)}
+      </div>
+    </section>
+  `;
+}
+
+function renderMasterBuilderArea() {
+  const area = document.querySelector("#masterBuilderArea");
+  if (!area) return;
+  area.innerHTML = masterBuilderMarkup();
+}
+
+function applyMasterBuilderTotals() {
+  const unitMode = document.querySelector("#masterFoodUnitMode");
+  const unitLabel = document.querySelector("#masterFoodUnitLabel");
+  const servingGrams = document.querySelector("#masterFoodServingGrams");
+  const kcal = document.querySelector("#masterFoodKcal");
+  const protein = document.querySelector("#masterFoodProtein");
+  const fat = document.querySelector("#masterFoodFat");
+  const carbs = document.querySelector("#masterFoodCarbs");
+  if (!masterBuilderItems.length) {
+    [servingGrams, kcal, protein, fat, carbs].forEach((input) => {
+      if (input) input.value = "";
+    });
+    return;
+  }
+  const rawTotals = masterBuilderTotals();
+  const totals = roundNutrients(rawTotals);
+  if (unitMode) unitMode.value = "serving";
+  if (unitLabel) {
+    unitLabel.disabled = false;
+    unitLabel.value = unitLabel.value && unitLabel.value !== "100g" ? unitLabel.value : "1食";
+  }
+  if (servingGrams) servingGrams.value = rawTotals.amountG ? String(round1(rawTotals.amountG)) : "";
+  if (kcal) kcal.value = String(totals.energyKcal);
+  if (protein) protein.value = String(totals.proteinG);
+  if (fat) fat.value = String(totals.fatG);
+  if (carbs) carbs.value = String(totals.carbsG);
+}
+
 function renderMasterFoodForm() {
   const container = document.querySelector("#masterFoodEntryPanel");
   if (!container) return;
@@ -1188,6 +1313,7 @@ function renderMasterFoodForm() {
           <label for="masterFoodName">名称</label>
           <input id="masterFoodName" type="text" placeholder="例: 雪見だいふく / 自作サラダ" required>
         </div>
+        <div id="masterBuilderArea">${masterBuilderMarkup()}</div>
         <div class="manual-nutrition-grid">
           <div class="form-row">
             <label for="masterFoodUnitMode">登録単位</label>
@@ -1307,6 +1433,7 @@ function addMealLog(log, statusMessage = "登録しました。続けて検索�
     ...log,
   });
   pendingFoodEntry = null;
+  mealHistoryOpen = false;
   foodSearchStatus = statusMessage;
   saveState("食事保存済み");
   render();
@@ -1336,6 +1463,7 @@ function setPendingGenericFood(foodId) {
   const food = getFoodById(foodId);
   if (!food) return;
   pendingFoodEntry = { type: "generic", foodId: food.id, amountG: "" };
+  mealHistoryOpen = false;
   foodSearchStatus = food.unitMode === "serving"
     ? "食べた数を入力して、今日の摂取に登録できます。"
     : "食べたg数を入力して、今日の摂取に登録できます。";
@@ -1349,6 +1477,7 @@ function showManualFoodEntry(context = {}) {
     barcode: context.barcode || "",
     name: context.name || "",
   };
+  mealHistoryOpen = false;
   foodSearchStatus = "kcalだけ必須です。PFCは分かる範囲で補完できます。";
   renderFood();
   document.querySelector("#pendingManualKcal")?.focus();
@@ -1357,6 +1486,9 @@ function showManualFoodEntry(context = {}) {
 function showMasterFoodEntry() {
   masterFoodEntryOpen = true;
   pendingFoodEntry = null;
+  mealHistoryOpen = false;
+  masterBuilderQuery = "";
+  masterBuilderItems = [];
   foodSearchStatus = "よく使う食品をマスタに登録できます。単位は100g、または1個・1食から選べます。";
   renderFood();
   document.querySelector("#masterFoodName")?.focus();
@@ -1505,7 +1637,9 @@ function registerManualFood() {
 function registerMasterFood() {
   if (!masterFoodEntryOpen) return;
   const name = document.querySelector("#masterFoodName")?.value.trim();
-  const kcal = Number(document.querySelector("#masterFoodKcal")?.value);
+  const hasBuilderItems = masterBuilderItems.length > 0;
+  const builderTotals = roundNutrients(masterBuilderTotals());
+  const kcal = hasBuilderItems ? builderTotals.energyKcal : Number(document.querySelector("#masterFoodKcal")?.value);
   if (!name) {
     setPendingMessage("名称を入力してください。");
     return;
@@ -1514,26 +1648,30 @@ function registerMasterFood() {
     setPendingMessage("kcalは必須です。1以上の数値を入力してください。");
     return;
   }
-  const unitMode = document.querySelector("#masterFoodUnitMode")?.value === "gram" ? "gram" : "serving";
+  const unitMode = hasBuilderItems ? "serving" : document.querySelector("#masterFoodUnitMode")?.value === "gram" ? "gram" : "serving";
   const rawUnitLabel = document.querySelector("#masterFoodUnitLabel")?.value.trim();
   const unitLabel = unitMode === "gram" ? "100g" : rawUnitLabel || "1食";
-  const nutrients = roundNutrients({
-    energyKcal: kcal,
-    proteinG: optionalInputNumber("#masterFoodProtein"),
-    fatG: optionalInputNumber("#masterFoodFat"),
-    carbsG: optionalInputNumber("#masterFoodCarbs"),
-    fiberG: 0,
-    saltG: 0,
-  });
+  const nutrients = hasBuilderItems
+    ? builderTotals
+    : roundNutrients({
+      energyKcal: kcal,
+      proteinG: optionalInputNumber("#masterFoodProtein"),
+      fatG: optionalInputNumber("#masterFoodFat"),
+      carbsG: optionalInputNumber("#masterFoodCarbs"),
+      fiberG: 0,
+      saltG: 0,
+    });
   const customFood = normalizeFoodMasterEntry({
     id: `custom:${Date.now()}-${Math.random().toString(16).slice(2)}`,
     name,
-    aliases: [],
+    aliases: hasBuilderItems
+      ? masterBuilderItems.map((item) => masterBuilderFood(item)?.name).filter(Boolean)
+      : [],
     category: "ユーザー登録",
     sourceType: "custom",
     unitMode,
     unitLabel,
-    servingGrams: optionalInputNumber("#masterFoodServingGrams"),
+    servingGrams: hasBuilderItems ? round1(masterBuilderTotals().amountG) : optionalInputNumber("#masterFoodServingGrams"),
     ediblePortionNote: unitMode === "gram" ? "100gあたり" : `${unitLabel}あたり`,
     nutrientsPer100g: unitMode === "gram" ? nutrients : emptyNutrients(),
     nutrientsPerUnit: nutrients,
@@ -1544,6 +1682,8 @@ function registerMasterFood() {
   }
   state.customFoodMaster = [customFood, ...(state.customFoodMaster || [])].slice(0, 200);
   masterFoodEntryOpen = false;
+  masterBuilderQuery = "";
+  masterBuilderItems = [];
   pendingFoodEntry = null;
   foodSearchQuery = name;
   foodSearchStatus = "マスタに登録しました。検索結果から選択して食事実績に追加できます。";
@@ -1730,9 +1870,13 @@ function renderMealLogList(listSelector, emptySelector, compact) {
 }
 
 function renderMealHistory() {
+  const panel = document.querySelector("#foodMealHistoryPanel");
+  const button = document.querySelector("#toggleMealHistoryButton");
   const list = document.querySelector("#foodMealHistoryList");
   const empty = document.querySelector("#foodMealHistoryEmpty");
-  if (!list || !empty) return;
+  if (!panel || !button || !list || !empty) return;
+  panel.hidden = !mealHistoryOpen;
+  button.setAttribute("aria-expanded", mealHistoryOpen ? "true" : "false");
   const logs = recentMealHistory(10);
   empty.classList.toggle("is-hidden", Boolean(logs.length));
   list.innerHTML = logs.map((entry) => {
@@ -3307,6 +3451,7 @@ function bindEvents() {
     if (!button) return;
     if (button.dataset.pendingAction === "clear") {
       pendingFoodEntry = null;
+      mealHistoryOpen = false;
       renderFood();
       return;
     }
@@ -3321,6 +3466,11 @@ function bindEvents() {
         name: product ? barcodeDisplayName(product) : "",
       });
     }
+  });
+
+  document.querySelector("#toggleMealHistoryButton")?.addEventListener("click", () => {
+    mealHistoryOpen = !mealHistoryOpen;
+    renderFood();
   });
 
   document.querySelector("#pendingFoodResult").addEventListener("submit", (event) => {
@@ -3341,11 +3491,49 @@ function bindEvents() {
     if (unitLabel.value === "100g") unitLabel.value = "1食";
   });
 
+  document.querySelector("#masterFoodEntryPanel")?.addEventListener("input", (event) => {
+    if (event.target.matches("#masterBuilderSearch")) {
+      masterBuilderQuery = event.target.value;
+      renderMasterBuilderArea();
+      document.querySelector("#masterBuilderSearch")?.focus();
+      return;
+    }
+    const amountInput = event.target.closest("[data-master-builder-amount]");
+    if (!amountInput) return;
+    const item = masterBuilderItems.find((entry) => entry.id === amountInput.dataset.masterBuilderAmount);
+    if (!item) return;
+    item.amount = amountInput.value === "" ? "" : Number(amountInput.value) || 0;
+    applyMasterBuilderTotals();
+  });
+
   document.querySelector("#masterFoodEntryPanel")?.addEventListener("click", (event) => {
+    const addButton = event.target.closest("[data-master-builder-add]");
+    if (addButton) {
+      const food = getFoodById(addButton.dataset.masterBuilderAdd);
+      if (!food) return;
+      masterBuilderItems.push({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        foodId: food.id,
+        amount: defaultMasterBuilderAmount(food),
+      });
+      masterBuilderQuery = "";
+      renderMasterBuilderArea();
+      applyMasterBuilderTotals();
+      return;
+    }
+    const removeButton = event.target.closest("[data-master-builder-remove]");
+    if (removeButton) {
+      masterBuilderItems = masterBuilderItems.filter((item) => item.id !== removeButton.dataset.masterBuilderRemove);
+      renderMasterBuilderArea();
+      applyMasterBuilderTotals();
+      return;
+    }
     const button = event.target.closest("[data-master-action]");
     if (!button) return;
     if (button.dataset.masterAction === "clear") {
       masterFoodEntryOpen = false;
+      masterBuilderQuery = "";
+      masterBuilderItems = [];
       renderFood();
     }
   });

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=89">
+  <link rel="stylesheet" href="./styles.css?v=91">
 </head>
 <body>
   <div id="app">
@@ -292,9 +292,20 @@
         </section>
 
         <section class="section-block nutrition-summary" aria-labelledby="foodTodayTitle">
-          <div class="section-head">
-            <h2 id="foodTodayTitle">今日一日の摂取</h2>
-            <p id="foodTodayDate">----/--/--</p>
+          <div class="section-head inline-head">
+            <div>
+              <h2 id="foodTodayTitle">食事実績</h2>
+              <p id="foodTodayDate">----/--/--</p>
+            </div>
+            <button class="ghost-button history-toggle-button" id="toggleMealHistoryButton" type="button" aria-label="履歴を参照" aria-expanded="false">⌚</button>
+          </div>
+          <div class="meal-history-panel" id="foodMealHistoryPanel" hidden>
+            <div class="section-head compact-section-head">
+              <h3>履歴から再登録</h3>
+              <p>直近10件から、同じ内容をすぐに登録できます。</p>
+            </div>
+            <div class="meal-history-list" id="foodMealHistoryList"></div>
+            <p class="empty-state" id="foodMealHistoryEmpty">まだ履歴がありません。</p>
           </div>
           <div class="intake-total-card">
             <span>摂取kcal</span>
@@ -336,14 +347,6 @@
           </div>
           <p class="intake-guidance-note" id="foodIntakeNote">基礎代謝と目標カロリー差から食事の目安を表示します。</p>
           <div class="pending-food-result" id="pendingFoodResult"></div>
-          <div class="meal-history-panel">
-            <div class="section-head compact-section-head">
-              <h3>最近食べたもの</h3>
-              <p>直近10件から、同じ内容をすぐに再登録できます。</p>
-            </div>
-            <div class="meal-history-list" id="foodMealHistoryList"></div>
-            <p class="empty-state" id="foodMealHistoryEmpty">まだ履歴がありません。</p>
-          </div>
           <div class="meal-log-list" id="foodMealLogList"></div>
           <p class="empty-state" id="foodMealLogEmpty">今日の食事はまだ登録されていません。</p>
         </section>
@@ -621,6 +624,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=89"></script>
+  <script src="./app.js?v=91"></script>
 </body>
 </html>
