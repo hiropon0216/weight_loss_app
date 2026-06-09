@@ -2888,6 +2888,7 @@ function scoreFromCheck(check) {
 function currentUiScore() {
   const guidance = intakeGuidance(selectedDate);
   if (!guidance || !guidance.hasFoodLog || guidance.required <= 0) return 0;
+  if (guidance.intake < guidance.lower) return 0;
   const ratio = guidance.actualDeficit / guidance.required;
   return Math.max(0, Math.min(100, Math.round(ratio * 100)));
 }
