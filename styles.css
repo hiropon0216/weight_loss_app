@@ -235,13 +235,6 @@ h1 { color: #f8f3ff; }
   letter-spacing: 0.02em;
 }
 
-.record-header small {
-  color: rgba(222, 225, 255, 0.62);
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-}
-
 .entry-form,
 .section-block,
 .chart-wrap,
@@ -1355,6 +1348,11 @@ input:focus, select:focus, textarea:focus {
   display: none;
 }
 
+.burn-summary-body {
+  display: grid;
+  gap: 12px;
+}
+
 .record-weight-form {
   display: grid;
   gap: 10px;
@@ -2135,12 +2133,103 @@ input:focus, select:focus, textarea:focus {
 .meal-log-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: start;
   gap: 10px;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid rgba(154, 108, 255, 0.24);
   border-radius: 8px;
   background: rgba(17, 22, 43, 0.78);
+}
+
+.meal-log-content {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.meal-log-topline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.meal-log-item .meal-source-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 7px;
+  border: 1px solid rgba(98, 220, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(8, 18, 36, 0.78);
+  color: var(--green-2);
+  font-size: 0.68rem;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.meal-log-item .meal-log-time {
+  display: inline-block;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.meal-log-item .meal-log-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.meal-food-name {
+  color: #f5fbff;
+  font-size: 1.04rem;
+  line-height: 1.28;
+}
+
+.meal-log-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.meal-log-meta-grid span {
+  min-height: 46px;
+  margin: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(8, 13, 30, 0.54);
+}
+
+.meal-log-meta-grid small,
+.meal-log-meta-grid b {
+  display: block;
+}
+
+.meal-log-meta-grid small {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.meal-log-meta-grid b {
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.1;
+}
+
+.meal-log-item .meal-log-pfc {
+  display: block;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.4;
 }
 
 .meal-history-item {
@@ -2156,6 +2245,23 @@ input:focus, select:focus, textarea:focus {
 
 .meal-log-item.compact {
   padding: 8px;
+}
+
+.meal-log-item.compact .meal-log-content {
+  gap: 5px;
+}
+
+.meal-log-item.compact .meal-food-name {
+  font-size: 0.96rem;
+}
+
+.meal-log-item.compact .meal-log-meta-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.meal-log-item.compact .meal-log-meta-grid span {
+  min-height: 40px;
+  padding: 6px 7px;
 }
 
 .meal-delete-button {

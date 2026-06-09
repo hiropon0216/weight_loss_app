@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=96">
+  <link rel="stylesheet" href="./styles.css?v=102">
 </head>
 <body>
   <div id="app">
@@ -22,7 +22,6 @@
       <section class="view active" id="view-today" aria-label="記録">
         <div class="record-header">
           <span>記録</span>
-          <small>ver 1.10 タイマー音・設定を調整（ワーク分単位／停止・リセット音／拍子木はワークのみ）（最終更新 2026-06-03）</small>
         </div>
         <div class="hero-panel game-panel">
           <div>
@@ -160,7 +159,7 @@
               <span><i class="legend-dot lower"></i>下限</span>
               <span><i class="legend-dot upper"></i>上限</span>
             </div>
-            <p class="intake-guidance-note" id="recordIntakeNote">基礎代謝と目標カロリー差から食事の目安を表示します。</p>
+            <p class="intake-guidance-note" id="recordIntakeNote">基礎代謝、生活消費、目標カロリー差から食事の目安を表示します。</p>
             <div class="meal-log-list compact" id="recordMealLogList"></div>
             <p class="empty-state" id="recordMealLogEmpty">まだ食事実績はありません。</p>
           </div>
@@ -183,15 +182,14 @@
           </div>
         </section>
 
-        <section class="section-block record-panel record-panel-burn burn-summary collapsible-section is-collapsed" aria-labelledby="burnSummaryTitle">
+        <section class="section-block record-panel record-panel-burn burn-summary" aria-labelledby="burnSummaryTitle">
           <div class="section-head inline-head">
             <div>
               <h2 id="burnSummaryTitle">燃焼サマリ</h2>
               <p>食事と運動から今日のカロリー収支を確認します。</p>
             </div>
-            <button class="collapse-toggle" type="button" data-collapse-toggle="recordBurnCollapse" aria-label="燃焼サマリを開く" aria-expanded="false">⌄</button>
           </div>
-          <div class="collapsible-body" id="recordBurnCollapse" hidden>
+          <div class="burn-summary-body">
             <div class="fat-burner heat-0" id="fatBurner" aria-live="polite">
               <div class="fat-core" aria-hidden="true">
                 <svg class="fat-fire-figure" viewBox="0 0 180 110" focusable="false">
@@ -373,7 +371,7 @@
             <span><i class="legend-dot lower"></i>下限</span>
             <span><i class="legend-dot upper"></i>上限</span>
           </div>
-          <p class="intake-guidance-note" id="foodIntakeNote">基礎代謝と目標カロリー差から食事の目安を表示します。</p>
+          <p class="intake-guidance-note" id="foodIntakeNote">基礎代謝、生活消費、目標カロリー差から食事の目安を表示します。</p>
           <div class="pending-food-result" id="pendingFoodResult"></div>
           <div class="meal-log-list" id="foodMealLogList"></div>
           <p class="empty-state" id="foodMealLogEmpty">今日の食事はまだ登録されていません。</p>
@@ -653,6 +651,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=96"></script>
+  <script src="./app.js?v=102"></script>
 </body>
 </html>

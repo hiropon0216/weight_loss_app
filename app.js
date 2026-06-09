@@ -11,6 +11,7 @@ const GENERIC_FOOD_MASTER_URL = "./data/generic_foods_core.json?v=1";
 const PROCESSED_FOOD_MASTER_URL = "./data/processed_foods_core.json?v=1";
 const ESTIMATED_PROCESSED_FOOD_MASTER_URL = "./data/processed_foods_estimated.json?v=1";
 const EXERCISE_INTAKE_CREDIT_RATE = 0.75;
+const CONSERVATIVE_LIFESTYLE_CREDIT_RATE = 0.1;
 const PFC_TARGETS = {
   proteinGPerKg: { min: 1.8, max: 2.2 },
   fatEnergyRatio: { min: 0.2, max: 0.3 },
@@ -811,23 +812,39 @@ function exerciseIntakeCreditKcal(date) {
   return Math.round(exerciseBurnForDate(date) * EXERCISE_INTAKE_CREDIT_RATE);
 }
 
+function lifestyleIntakeCreditKcal(bmr = basalMetabolicRate()) {
+  if (!bmr) return 0;
+  return Math.round(bmr * CONSERVATIVE_LIFESTYLE_CREDIT_RATE);
+}
+
 function intakeGuidance(date) {
   const bmr = basalMetabolicRate();
   const required = requiredDailyDeficitKcal();
   if (!bmr || required === null) return null;
   const exercise = exerciseBurnForDate(date);
   const exerciseCredit = exerciseIntakeCreditKcal(date);
+  const lifestyleCredit = lifestyleIntakeCreditKcal(bmr);
   const lower = bmr;
-  const upper = Math.max(lower, bmr + exerciseCredit - required);
+  const targetUpper = Math.round(bmr + lifestyleCredit + exerciseCredit - required);
+  const upper = Math.max(0, targetUpper);
   const intake = Math.round(nutritionTotals(date).energyKcal);
-  const actualDeficit = Math.round((bmr + exerciseCredit) - intake);
+  const availableBurn = bmr + lifestyleCredit + exerciseCredit;
+  const minimumDeficit = Math.max(0, availableBurn - lower);
+  const targetConflict = upper < lower;
+  const deficitShortfallAtMinimum = Math.max(0, required - minimumDeficit);
+  const actualDeficit = Math.round(availableBurn - intake);
   return {
     bmr,
     exercise,
     exerciseCredit,
+    lifestyleCredit,
+    availableBurn,
     required,
     lower,
     upper,
+    targetConflict,
+    minimumDeficit,
+    deficitShortfallAtMinimum,
     intake,
     actualDeficit,
     hasFoodLog: mealLogsForDate(date).length > 0,
@@ -1897,33 +1914,47 @@ function renderIntakeGuidance(floorSelector, ceilingSelector, noteSelector, gaug
   if (!guidance) {
     setText(floorSelector, "-- kcal");
     setText(ceilingSelector, "-- kcal");
-    setText(noteSelector, "基礎代謝と目標カロリー差から食事の目安を表示します。");
+    setText(noteSelector, "基礎代謝、生活消費、目標カロリー差から食事の目安を表示します。");
     renderIntakeGauge(gaugeSelector, null);
     return;
   }
   setText(floorSelector, `${guidance.lower} kcal`);
-  setText(ceilingSelector, `${guidance.upper} kcal`);
+  setText(ceilingSelector, guidance.targetConflict ? "要見直し" : `${guidance.upper} kcal`);
   renderIntakeGauge(gaugeSelector, guidance);
   const note = document.querySelector(noteSelector);
   if (!note) return;
   note.classList.remove("warn", "danger");
+  const conflictMessage = "最低摂取量を守ると、今日の目標カロリー差には届きません。運動を増やすか、目標体重・期限を見直してください。";
   if (!guidance.hasFoodLog) {
-    note.textContent = `下限は基礎代謝${guidance.lower}kcalです。上限は基礎代謝に運動反映分${guidance.exerciseCredit}kcalを足し、目標カロリー差${guidance.required}kcalを差し引いた${guidance.upper}kcalを目安にします。`;
+    if (guidance.targetConflict) {
+      note.classList.add("danger");
+      note.textContent = `${conflictMessage} 最低摂取量で確保できるカロリー差は${guidance.minimumDeficit}kcal、目標は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`;
+      return;
+    }
+    note.textContent = `下限は基礎代謝${guidance.lower}kcalです。上限は基礎代謝に保守的な生活消費${guidance.lifestyleCredit}kcalと運動反映分${guidance.exerciseCredit}kcalを足し、目標カロリー差${guidance.required}kcalを差し引いた${guidance.upper}kcalを目安にします。`;
     return;
   }
   if (guidance.intake < guidance.lower) {
     note.classList.add("danger");
     totalCard?.classList.add("danger");
-    note.textContent = `摂取が基礎代謝 ${guidance.lower}kcal を下回っています。食事量が少なすぎるため、まずは下限を満たしてください。`;
+    note.textContent = guidance.targetConflict
+      ? `摂取が基礎代謝 ${guidance.lower}kcal を下回っています。まずは下限を満たしてください。なお、${conflictMessage} 生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`
+      : `摂取が基礎代謝 ${guidance.lower}kcal を下回っています。食事量が少なすぎるため、まずは下限を満たしてください。`;
+    return;
+  }
+  if (guidance.targetConflict) {
+    note.classList.add("danger");
+    totalCard?.classList.add("danger");
+    note.textContent = `${conflictMessage} 最低摂取量で確保できるカロリー差は${guidance.minimumDeficit}kcal、目標は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`;
     return;
   }
   if (guidance.intake > guidance.upper) {
     note.classList.add("danger");
     totalCard?.classList.add("danger");
-    note.textContent = `摂取が上限目安 ${guidance.upper}kcal を ${guidance.intake - guidance.upper}kcal 上回っています。生活活動分は含めず、運動消費の75%を上限に反映しています。`;
+    note.textContent = `摂取が上限目安 ${guidance.upper}kcal を ${guidance.intake - guidance.upper}kcal 上回っています。上限には保守的な生活消費${guidance.lifestyleCredit}kcalと運動消費の75%を反映しています。`;
     return;
   }
-  note.textContent = `基礎代謝 ${guidance.lower}kcal は下回らず、上限目安 ${guidance.upper}kcal に収まっています。目標カロリー差は1日約${guidance.required}kcalです。`;
+  note.textContent = `基礎代謝 ${guidance.lower}kcal は下回らず、上限目安 ${guidance.upper}kcal に収まっています。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もり、目標カロリー差は1日約${guidance.required}kcalです。`;
 }
 
 function renderIntakeGauge(selector, guidance) {
@@ -1937,17 +1968,41 @@ function renderIntakeGauge(selector, guidance) {
     gauge.style.setProperty("--upper-pct", "0%");
     return;
   }
-  const max = Math.max(guidance.upper * 1.18, guidance.lower * 1.18, guidance.intake, 1);
+  const max = Math.max(Math.max(guidance.upper, 0) * 1.18, guidance.lower * 1.18, guidance.intake, 1);
   const intakePct = Math.min(100, Math.round((guidance.intake / max) * 1000) / 10);
   const lowerPct = Math.min(100, Math.round((guidance.lower / max) * 1000) / 10);
-  const upperPct = Math.min(100, Math.round((guidance.upper / max) * 1000) / 10);
+  const upperPct = Math.min(100, Math.round((Math.max(guidance.upper, 0) / max) * 1000) / 10);
   gauge.style.setProperty("--intake-pct", `${intakePct}%`);
   gauge.style.setProperty("--lower-pct", `${lowerPct}%`);
   gauge.style.setProperty("--upper-pct", `${upperPct}%`);
   gauge.classList.toggle("overlap", Math.abs(upperPct - lowerPct) < 1);
-  if (guidance.hasFoodLog && (guidance.intake < guidance.lower || guidance.intake > guidance.upper)) {
+  if (guidance.targetConflict || (guidance.hasFoodLog && (guidance.intake < guidance.lower || guidance.intake > guidance.upper))) {
     gauge.classList.add("danger");
   }
+}
+
+function mealSourceLabel(entry) {
+  switch (entry.sourceType) {
+    case "custom_master":
+      return "登録食品";
+    case "generic":
+      return "食品マスタ";
+    case "barcode":
+      return "バーコード";
+    case "manual_barcode":
+      return "バーコード補完";
+    case "manual":
+      return "手入力";
+    default:
+      return "食事";
+  }
+}
+
+function mealLoggedTime(entry) {
+  if (!entry.createdAt) return "";
+  const date = new Date(entry.createdAt);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 }
 
 function renderMealLogList(listSelector, emptySelector, compact) {
@@ -1959,11 +2014,21 @@ function renderMealLogList(listSelector, emptySelector, compact) {
   list.innerHTML = logs.map((entry) => {
     const nutrients = entry.nutrientsSnapshot || {};
     const amountLabel = entry.amountLabel || (entry.amountG ? `${round1(entry.amountG).toFixed(0)}g` : "手入力");
+    const loggedTime = mealLoggedTime(entry);
     return `
       <article class="meal-log-item${compact ? " compact" : ""}">
-        <div>
-          <strong>${escapeHtml(entry.displayName)}</strong>
-          <span>${escapeHtml(amountLabel)} / ${formatKcal(nutrients.energyKcal)} / P（たんぱく質）${formatGram(nutrients.proteinG)} / F（脂質）${formatGram(nutrients.fatG)} / C（炭水化物）${formatGram(nutrients.carbsG)}</span>
+        <div class="meal-log-content">
+          <div class="meal-log-topline">
+            <span class="meal-source-badge">${escapeHtml(mealSourceLabel(entry))}</span>
+            ${loggedTime ? `<span class="meal-log-time">登録 ${escapeHtml(loggedTime)}</span>` : ""}
+          </div>
+          <span class="meal-log-label">食べたもの</span>
+          <strong class="meal-food-name">${escapeHtml(entry.displayName)}</strong>
+          <div class="meal-log-meta-grid">
+            <span><small>量</small><b>${escapeHtml(amountLabel)}</b></span>
+            <span><small>摂取kcal</small><b>${formatKcal(nutrients.energyKcal)}</b></span>
+          </div>
+          <span class="meal-log-pfc">P（たんぱく質）${formatGram(nutrients.proteinG)} / F（脂質）${formatGram(nutrients.fatG)} / C（炭水化物）${formatGram(nutrients.carbsG)}</span>
         </div>
         <button class="ghost-button meal-delete-button" type="button" data-delete-meal-log="${escapeHtml(entry.id)}">削除</button>
       </article>
@@ -2851,6 +2916,9 @@ function dailyDecision(date) {
   if (guidance.intake < guidance.lower) {
     return { status: "fail", label: "不合格", short: "否", reason: `基礎代謝 ${guidance.lower}kcal を下回っています。`, guidance };
   }
+  if (guidance.targetConflict) {
+    return { status: "fail", label: "不合格", short: "否", reason: "最低摂取量を守ると、今日の目標カロリー差には届きません。", guidance };
+  }
   if (guidance.intake <= guidance.upper) {
     return { status: "pass", label: "合格", short: "合", reason: `目標カロリー差 ${guidance.required}kcal を達成しています。`, guidance };
   }
@@ -2862,10 +2930,18 @@ function weeklyDecisionSummary(results, recordedDays) {
     return { status: "fail", label: "不合格", short: "否", reason: "まだ評価対象の記録がありません。" };
   }
   const recordedFoodDays = results.filter((entry) => entry.guidance?.hasFoodLog).length;
+  const targetConflictDays = results.filter((entry) => entry.guidance?.hasFoodLog && entry.guidance.targetConflict).length;
+  const underMinimumDays = results.filter((entry) => entry.guidance?.hasFoodLog && entry.guidance.intake < entry.guidance.lower).length;
   const totalRequired = results.reduce((sum, entry) => sum + (entry.guidance?.required || 0), 0);
   const totalActual = results.reduce((sum, entry) => sum + (entry.guidance?.hasFoodLog ? (entry.guidance?.actualDeficit || 0) : 0), 0);
   if (recordedFoodDays < 4) {
     return { status: "fail", label: "不合格", short: "否", reason: "食事記録が4日未満のため、週間判定は不合格です。" };
+  }
+  if (underMinimumDays) {
+    return { status: "fail", label: "不合格", short: "否", reason: `基礎代謝を下回った日が${underMinimumDays}日あります。まずは最低摂取量を守ってください。` };
+  }
+  if (targetConflictDays) {
+    return { status: "fail", label: "不合格", short: "否", reason: `最低摂取量と目標カロリー差が両立しない日が${targetConflictDays}日あります。運動量、目標体重、期限を見直してください。` };
   }
   if (totalActual >= totalRequired) {
     return { status: "pass", label: "合格", short: "合", reason: "7日合計で目標カロリー差を達成しています。" };
@@ -3358,7 +3434,6 @@ function setCollapseState(sectionId, collapsed) {
     recordWeightCollapse: "体重記録",
     recordFoodCollapse: "食事実績",
     recordExerciseCollapse: "運動実績",
-    recordBurnCollapse: "燃焼サマリ",
   };
   const label = labels[sectionId] || "セクション";
   body.hidden = collapsed;
@@ -3866,13 +3941,22 @@ function updateFoodBurner() {
     text.textContent = "目標体重と期限を設定すると、今日必要なカロリー差を計算します。まずは設定を確認してください。";
     return;
   }
+  const conflictMessage = "最低摂取量を守ると、今日の目標カロリー差には届きません。運動を増やすか、目標体重・期限を見直してください。";
   if (!guidance.hasFoodLog) {
-    text.textContent = `今日の目標カロリー差は約${guidance.required}kcalです。食事実績がまだないため、判定は行いません。食事を登録すると現在の進捗を確認できます。`;
+    text.textContent = guidance.targetConflict
+      ? `${conflictMessage} 最低摂取量で確保できるカロリー差は${guidance.minimumDeficit}kcal、目標は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`
+      : `今日の目標カロリー差は約${guidance.required}kcalです。食事実績がまだないため、判定は行いません。食事を登録すると現在の進捗を確認できます。`;
     return;
   }
   const decision = dailyDecision(selectedDate);
   if (guidance.intake < guidance.lower) {
-    text.textContent = `今日の摂取は${guidance.intake}kcalです。基礎代謝の目安 ${guidance.lower}kcal を下回っているため、食事量が少なすぎます。まずは下限まで補ってください。`;
+    text.textContent = guidance.targetConflict
+      ? `今日の摂取は${guidance.intake}kcalです。基礎代謝の目安 ${guidance.lower}kcal を下回っています。まずは下限まで補ってください。なお、${conflictMessage} 生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`
+      : `今日の摂取は${guidance.intake}kcalです。基礎代謝の目安 ${guidance.lower}kcal を下回っているため、食事量が少なすぎます。まずは下限まで補ってください。`;
+    return;
+  }
+  if (guidance.targetConflict) {
+    text.textContent = `${conflictMessage} 最低摂取量で確保できるカロリー差は${guidance.minimumDeficit}kcal、目標は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`;
     return;
   }
   if (guidance.intake > guidance.upper) {
@@ -3880,7 +3964,7 @@ function updateFoodBurner() {
     return;
   }
   if (decision.status === "pass") {
-    text.textContent = `今日の摂取は${guidance.intake}kcalで、目安範囲内です。実績カロリー差は${guidance.actualDeficit}kcal、目標は${guidance.required}kcalです。このペースなら今日の判定は合格です。`;
+    text.textContent = `今日の摂取は${guidance.intake}kcalで、目安範囲内です。実績カロリー差は${guidance.actualDeficit}kcal、目標は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`;
     return;
   }
   text.textContent = `今日の摂取は${guidance.intake}kcalで、食事量は目安範囲内です。ただし実績カロリー差は${guidance.actualDeficit}kcalで、目標の${guidance.required}kcalに届いていません。運動を追加するか、以降の食事量を調整してください。`;
