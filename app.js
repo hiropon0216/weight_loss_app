@@ -99,6 +99,7 @@ let foodSearchQuery = "";
 let foodSearchStatus = "バーコードはカメラ撮影、または番号入力で検索できます。";
 let pendingFoodEntry = null;
 let masterFoodEntryOpen = false;
+let editingMasterFoodId = "";
 let mealHistoryOpen = false;
 let masterBuilderQuery = "";
 let masterBuilderItems = [];
@@ -1021,7 +1022,7 @@ function renderFoodSearch() {
   const barcodeCandidate = rawQuery.replace(/\D/g, "");
   const compactQuery = rawQuery.replace(/[\s-]/g, "");
   if (!rawQuery) {
-    container.innerHTML = `<p class="empty-state">食材名、カテゴリ、バーコード番号を入力してください。</p>`;
+    container.innerHTML = `<p class="empty-state">食品名、カテゴリ、バーコード番号を入力してください。</p>`;
     return;
   }
   if (barcodeCandidate.length >= 8 && barcodeCandidate === compactQuery) {
@@ -1030,7 +1031,7 @@ function renderFoodSearch() {
   }
   const results = searchGenericFoods();
   if (!results.length) {
-    container.innerHTML = `<p class="empty-state">該当する食材がありません。よく使う食品は食材登録から追加できます。</p>`;
+    container.innerHTML = `<p class="empty-state">該当する食品がありません。よく使う食品は食品登録から追加できます。</p>`;
     return;
   }
   container.innerHTML = results.map((food) => {
@@ -1198,7 +1199,9 @@ function masterBuilderTotals() {
 
 function masterBuilderMarkup() {
   const query = masterBuilderQuery.trim();
-  const results = query ? searchGenericFoods(query).slice(0, 8) : [];
+  const results = query
+    ? searchGenericFoods(query).filter((food) => food.id !== editingMasterFoodId).slice(0, 8)
+    : [];
   const totals = roundNutrients(masterBuilderTotals());
   const resultMarkup = query
     ? results.length
@@ -1293,6 +1296,67 @@ function applyMasterBuilderTotals() {
   if (carbs) carbs.value = String(totals.carbsG);
 }
 
+function customFoodMasterList() {
+  return (state.customFoodMaster || []).filter((food) => food?.sourceType === "custom");
+}
+
+function getCustomFoodById(id) {
+  return customFoodMasterList().find((food) => food.id === id) || null;
+}
+
+function masterFoodFormNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? String(number) : "";
+}
+
+function masterFoodEditValues(food) {
+  if (!food) {
+    return {
+      title: "食品を追加",
+      name: "",
+      unitMode: "serving",
+      unitLabel: "1食",
+      servingGrams: "",
+      nutrients: emptyNutrients(),
+    };
+  }
+  return {
+    title: "食品を編集",
+    name: food.name,
+    unitMode: food.unitMode,
+    unitLabel: food.unitMode === "gram" ? "100g" : food.unitLabel || "1食",
+    servingGrams: masterFoodFormNumber(food.servingGrams),
+    nutrients: food.unitMode === "gram" ? food.nutrientsPer100g : food.nutrientsPerUnit,
+  };
+}
+
+function renderCustomFoodMasterList() {
+  const foods = customFoodMasterList();
+  if (!foods.length) {
+    return `<p class="empty-state">ローカル登録した食品はまだありません。</p>`;
+  }
+  return `
+    <div class="custom-master-list">
+      ${foods.map((food) => {
+        const nutrients = food.unitMode === "gram" ? food.nutrientsPer100g : food.nutrientsPerUnit;
+        const isEditing = food.id === editingMasterFoodId ? " editing" : "";
+        return `
+          <article class="custom-master-item${isEditing}">
+            <div>
+              <strong>${escapeHtml(food.name)}</strong>
+              <span>${escapeHtml(food.unitLabel || foodUnitBaseLabel(food))} / ${formatKcal(nutrients.energyKcal)} / P ${formatGram(nutrients.proteinG)} / F ${formatGram(nutrients.fatG)} / C ${formatGram(nutrients.carbsG)}</span>
+            </div>
+            <div class="custom-master-actions">
+              <button class="ghost-button compact-button" type="button" data-master-edit="${escapeHtml(food.id)}">編集</button>
+              <button class="danger-button compact-button" type="button" data-master-delete="${escapeHtml(food.id)}">削除</button>
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
 function renderMasterFoodForm() {
   const container = document.querySelector("#masterFoodEntryPanel");
   if (!container) return;
@@ -1300,59 +1364,82 @@ function renderMasterFoodForm() {
     container.innerHTML = "";
     return;
   }
+  const editingFood = getCustomFoodById(editingMasterFoodId);
+  if (editingMasterFoodId && !editingFood) editingMasterFoodId = "";
+  const values = masterFoodEditValues(editingFood);
+  const nutrients = values.nutrients || emptyNutrients();
+  const gramSelected = values.unitMode === "gram";
   container.innerHTML = `
-    <article class="pending-food-card manual-pending-card">
-      <div class="pending-food-head">
-        <div>
-          <span class="panel-label">食材登録</span>
-          <h3>よく食べる食品を登録</h3>
-          <p>商品は1個、料理は1食、食材は100g基準で登録します。まとめ料理も1食単位で登録できます。</p>
+    <div class="master-food-entry-overlay" role="presentation">
+      <section class="master-food-entry-drawer" role="dialog" aria-modal="true" aria-labelledby="masterFoodDrawerTitle">
+        <div class="pending-food-head">
+          <div>
+            <span class="panel-label">食品登録</span>
+            <h3 id="masterFoodDrawerTitle">ローカル食品マスタ</h3>
+            <p>ここでは自分で登録した食品だけを追加・編集・削除できます。静的マスタは表示しません。</p>
+          </div>
+          <button class="ghost-button pending-close-button" type="button" data-master-action="clear">×</button>
         </div>
-        <button class="ghost-button pending-close-button" type="button" data-master-action="clear">×</button>
-      </div>
-      <form class="manual-food-form" id="masterFoodForm">
-        <div class="form-row">
-          <label for="masterFoodName">名称</label>
-          <input id="masterFoodName" type="text" placeholder="例: 雪見だいふく / 自作サラダ" required>
-        </div>
-        <div id="masterBuilderArea">${masterBuilderMarkup()}</div>
-        <div class="manual-nutrition-grid">
-          <div class="form-row">
-            <label for="masterFoodUnitMode">登録単位</label>
-            <select id="masterFoodUnitMode" required>
-              <option value="serving">1個・1食あたり</option>
-              <option value="gram">100gあたり</option>
-            </select>
+
+        <section class="custom-master-section" aria-label="登録済み食品">
+          <div class="section-head compact-section-head custom-master-head">
+            <div>
+              <h3>登録済み食品</h3>
+              <p>検索結果にも表示される、ローカル保存の食品です。</p>
+            </div>
+            ${editingFood ? `<button class="ghost-button compact-button" type="button" data-master-action="new">新規追加</button>` : ""}
+          </div>
+          ${renderCustomFoodMasterList()}
+        </section>
+
+        <form class="manual-food-form master-food-form" id="masterFoodForm">
+          <div class="section-head compact-section-head">
+            <h3>${values.title}</h3>
+            <p>kcalだけ必須です。PFCは分かる範囲で入力できます。</p>
           </div>
           <div class="form-row">
-            <label for="masterFoodUnitLabel">単位名</label>
-            <input id="masterFoodUnitLabel" type="text" placeholder="例: 1個 / 1食 / 1袋" value="1食">
+            <label for="masterFoodName">名称</label>
+            <input id="masterFoodName" type="text" value="${escapeHtml(values.name)}" placeholder="例: 雪見だいふく / 自作サラダ" required>
           </div>
-          <div class="form-row">
-            <label for="masterFoodServingGrams">参考重量 g</label>
-            <input id="masterFoodServingGrams" type="number" min="0" step="1" inputmode="decimal" placeholder="任意">
+          <div id="masterBuilderArea">${masterBuilderMarkup()}</div>
+          <div class="manual-nutrition-grid">
+            <div class="form-row">
+              <label for="masterFoodUnitMode">登録単位</label>
+              <select id="masterFoodUnitMode" required>
+                <option value="serving"${!gramSelected ? " selected" : ""}>1個・1食あたり</option>
+                <option value="gram"${gramSelected ? " selected" : ""}>100gあたり</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label for="masterFoodUnitLabel">単位名</label>
+              <input id="masterFoodUnitLabel" type="text" placeholder="例: 1個 / 1食 / 1袋" value="${escapeHtml(values.unitLabel)}"${gramSelected ? " disabled" : ""}>
+            </div>
+            <div class="form-row">
+              <label for="masterFoodServingGrams">参考重量 g</label>
+              <input id="masterFoodServingGrams" type="number" min="0" step="1" inputmode="decimal" placeholder="任意" value="${escapeHtml(values.servingGrams)}">
+            </div>
+            <div class="form-row">
+              <label for="masterFoodKcal">kcal 必須</label>
+              <input id="masterFoodKcal" type="number" min="1" step="1" inputmode="decimal" value="${escapeHtml(masterFoodFormNumber(nutrients.energyKcal))}" required>
+            </div>
+            <div class="form-row">
+              <label for="masterFoodProtein">P（たんぱく質）g</label>
+              <input id="masterFoodProtein" type="number" min="0" step="0.1" inputmode="decimal" value="${escapeHtml(masterFoodFormNumber(nutrients.proteinG))}">
+            </div>
+            <div class="form-row">
+              <label for="masterFoodFat">F（脂質）g</label>
+              <input id="masterFoodFat" type="number" min="0" step="0.1" inputmode="decimal" value="${escapeHtml(masterFoodFormNumber(nutrients.fatG))}">
+            </div>
+            <div class="form-row">
+              <label for="masterFoodCarbs">C（炭水化物）g</label>
+              <input id="masterFoodCarbs" type="number" min="0" step="0.1" inputmode="decimal" value="${escapeHtml(masterFoodFormNumber(nutrients.carbsG))}">
+            </div>
           </div>
-          <div class="form-row">
-            <label for="masterFoodKcal">kcal 必須</label>
-            <input id="masterFoodKcal" type="number" min="1" step="1" inputmode="decimal" required>
-          </div>
-          <div class="form-row">
-            <label for="masterFoodProtein">P（たんぱく質）g</label>
-            <input id="masterFoodProtein" type="number" min="0" step="0.1" inputmode="decimal">
-          </div>
-          <div class="form-row">
-            <label for="masterFoodFat">F（脂質）g</label>
-            <input id="masterFoodFat" type="number" min="0" step="0.1" inputmode="decimal">
-          </div>
-          <div class="form-row">
-            <label for="masterFoodCarbs">C（炭水化物）g</label>
-            <input id="masterFoodCarbs" type="number" min="0" step="0.1" inputmode="decimal">
-          </div>
-        </div>
-        <p class="pending-food-message" id="pendingFoodMessage" aria-live="polite"></p>
-        <button class="primary-button full-button" type="submit">食材を登録 📝</button>
-      </form>
-    </article>
+          <p class="pending-food-message" id="masterFoodMessage" aria-live="polite"></p>
+          <button class="primary-button full-button" type="submit">${editingFood ? "変更を保存" : "食品を登録 📝"}</button>
+        </form>
+      </section>
+    </div>
   `;
 }
 
@@ -1427,6 +1514,11 @@ function setPendingMessage(message) {
   if (element) element.textContent = message;
 }
 
+function setMasterFoodMessage(message) {
+  const element = document.querySelector("#masterFoodMessage");
+  if (element) element.textContent = message;
+}
+
 function addMealLog(log, statusMessage = "登録しました。続けて検索できます。") {
   state.mealLogs.push({
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -1487,11 +1579,12 @@ function showManualFoodEntry(context = {}) {
 
 function showMasterFoodEntry() {
   masterFoodEntryOpen = true;
+  editingMasterFoodId = "";
   pendingFoodEntry = null;
   mealHistoryOpen = false;
   masterBuilderQuery = "";
   masterBuilderItems = [];
-  foodSearchStatus = "よく使う食品をマスタに登録できます。単位は100g、または1個・1食から選べます。";
+  foodSearchStatus = "よく使う食品をローカルに登録できます。単位は100g、または1個・1食から選べます。";
   renderFood();
   document.querySelector("#masterFoodName")?.focus();
 }
@@ -1503,7 +1596,7 @@ async function performUnifiedFoodSearch() {
   const barcodeCandidate = rawQuery.replace(/\D/g, "");
   const compactQuery = rawQuery.replace(/[\s-]/g, "");
   if (!rawQuery) {
-    foodSearchStatus = "食材名、カテゴリ、バーコード番号を入力してください。";
+    foodSearchStatus = "食品名、カテゴリ、バーコード番号を入力してください。";
     renderFood();
     return;
   }
@@ -1541,7 +1634,7 @@ async function performUnifiedFoodSearch() {
   const results = searchGenericFoods(rawQuery);
   foodSearchStatus = results.length
     ? "候補を選択すると、今日の摂取欄で量を入力できます。"
-    : "該当する食材がありません。よく使う食品は食材登録から追加できます。";
+    : "該当する食品がありません。よく使う食品は食品登録から追加できます。";
   renderFood();
 }
 
@@ -1643,13 +1736,14 @@ function registerMasterFood() {
   const builderTotals = roundNutrients(masterBuilderTotals());
   const kcal = hasBuilderItems ? builderTotals.energyKcal : Number(document.querySelector("#masterFoodKcal")?.value);
   if (!name) {
-    setPendingMessage("名称を入力してください。");
+    setMasterFoodMessage("名称を入力してください。");
     return;
   }
   if (!Number.isFinite(kcal) || kcal <= 0) {
-    setPendingMessage("kcalは必須です。1以上の数値を入力してください。");
+    setMasterFoodMessage("kcalは必須です。1以上の数値を入力してください。");
     return;
   }
+  const editingFood = getCustomFoodById(editingMasterFoodId);
   const unitMode = hasBuilderItems ? "serving" : document.querySelector("#masterFoodUnitMode")?.value === "gram" ? "gram" : "serving";
   const rawUnitLabel = document.querySelector("#masterFoodUnitLabel")?.value.trim();
   const unitLabel = unitMode === "gram" ? "100g" : rawUnitLabel || "1食";
@@ -1664,11 +1758,11 @@ function registerMasterFood() {
       saltG: 0,
     });
   const customFood = normalizeFoodMasterEntry({
-    id: `custom:${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    id: editingFood?.id || `custom:${Date.now()}-${Math.random().toString(16).slice(2)}`,
     name,
     aliases: hasBuilderItems
       ? masterBuilderItems.map((item) => masterBuilderFood(item)?.name).filter(Boolean)
-      : [],
+      : editingFood?.aliases || [],
     category: "ユーザー登録",
     sourceType: "custom",
     unitMode,
@@ -1679,17 +1773,23 @@ function registerMasterFood() {
     nutrientsPerUnit: nutrients,
   });
   if (!customFood) {
-    setPendingMessage("マスタ登録に失敗しました。入力内容を確認してください。");
+    setMasterFoodMessage("食品登録に失敗しました。入力内容を確認してください。");
     return;
   }
-  state.customFoodMaster = [customFood, ...(state.customFoodMaster || [])].slice(0, 200);
-  masterFoodEntryOpen = false;
+  const currentMaster = state.customFoodMaster || [];
+  state.customFoodMaster = editingFood
+    ? currentMaster.map((food) => food.id === editingFood.id ? customFood : food)
+    : [customFood, ...currentMaster].slice(0, 200);
+  masterFoodEntryOpen = true;
+  editingMasterFoodId = "";
   masterBuilderQuery = "";
   masterBuilderItems = [];
   pendingFoodEntry = null;
   foodSearchQuery = name;
-  foodSearchStatus = "マスタに登録しました。検索結果から選択して食事実績に追加できます。";
-  saveState("マスタ保存済み");
+  foodSearchStatus = editingFood
+    ? "食品を更新しました。検索結果から選択して食事実績に追加できます。"
+    : "食品を登録しました。検索結果から選択して食事実績に追加できます。";
+  saveState("食品マスタ保存済み");
   renderFood();
 }
 
@@ -3250,6 +3350,23 @@ function activateView(viewName) {
   drawChart();
 }
 
+function setCollapseState(sectionId, collapsed) {
+  const body = document.querySelector(`#${sectionId}`);
+  const button = document.querySelector(`[data-collapse-toggle="${sectionId}"]`);
+  if (!body || !button) return;
+  const labels = {
+    recordWeightCollapse: "体重記録",
+    recordFoodCollapse: "食事実績",
+    recordExerciseCollapse: "運動実績",
+    recordBurnCollapse: "燃焼サマリ",
+  };
+  const label = labels[sectionId] || "セクション";
+  body.hidden = collapsed;
+  button.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  button.setAttribute("aria-label", `${label}を${collapsed ? "開く" : "閉じる"}`);
+  button.closest(".collapsible-section")?.classList.toggle("is-collapsed", collapsed);
+}
+
 function setSettingsOpen(open) {
   const overlay = document.querySelector("#settingsOverlay");
   if (!overlay) return;
@@ -3273,6 +3390,14 @@ function bindEvents() {
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => {
       activateView(tab.dataset.view);
+    });
+  });
+
+  document.querySelectorAll("[data-collapse-toggle]").forEach((button) => {
+    setCollapseState(button.dataset.collapseToggle, button.getAttribute("aria-expanded") !== "true");
+    button.addEventListener("click", () => {
+      const expanded = button.getAttribute("aria-expanded") === "true";
+      setCollapseState(button.dataset.collapseToggle, expanded);
     });
   });
 
@@ -3509,6 +3634,36 @@ function bindEvents() {
   });
 
   document.querySelector("#masterFoodEntryPanel")?.addEventListener("click", (event) => {
+    if (event.target.classList.contains("master-food-entry-overlay")) {
+      masterFoodEntryOpen = false;
+      editingMasterFoodId = "";
+      masterBuilderQuery = "";
+      masterBuilderItems = [];
+      renderFood();
+      return;
+    }
+    const editButton = event.target.closest("[data-master-edit]");
+    if (editButton) {
+      editingMasterFoodId = editButton.dataset.masterEdit || "";
+      masterBuilderQuery = "";
+      masterBuilderItems = [];
+      renderFood();
+      document.querySelector("#masterFoodName")?.focus();
+      return;
+    }
+    const deleteButton = event.target.closest("[data-master-delete]");
+    if (deleteButton) {
+      const food = getCustomFoodById(deleteButton.dataset.masterDelete);
+      if (!food) return;
+      if (!window.confirm(`${food.name}を削除しますか？`)) return;
+      state.customFoodMaster = (state.customFoodMaster || []).filter((entry) => entry.id !== food.id);
+      if (editingMasterFoodId === food.id) editingMasterFoodId = "";
+      masterBuilderItems = masterBuilderItems.filter((item) => item.foodId !== food.id);
+      foodSearchStatus = `${food.name}を削除しました。`;
+      saveState("食品マスタ削除済み");
+      renderFood();
+      return;
+    }
     const addButton = event.target.closest("[data-master-builder-add]");
     if (addButton) {
       const food = getFoodById(addButton.dataset.masterBuilderAdd);
@@ -3534,9 +3689,18 @@ function bindEvents() {
     if (!button) return;
     if (button.dataset.masterAction === "clear") {
       masterFoodEntryOpen = false;
+      editingMasterFoodId = "";
       masterBuilderQuery = "";
       masterBuilderItems = [];
       renderFood();
+      return;
+    }
+    if (button.dataset.masterAction === "new") {
+      editingMasterFoodId = "";
+      masterBuilderQuery = "";
+      masterBuilderItems = [];
+      renderFood();
+      document.querySelector("#masterFoodName")?.focus();
     }
   });
 

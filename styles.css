@@ -1266,10 +1266,137 @@ input:focus, select:focus, textarea:focus {
   gap: 12px;
 }
 
+.section-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .compact-button {
   min-height: 38px;
   padding: 8px 10px;
   white-space: nowrap;
+}
+
+.collapse-toggle {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(17, 20, 40, 0.76);
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.collapse-toggle[aria-expanded="true"] {
+  border-color: rgba(87, 242, 223, 0.48);
+  background: rgba(31, 44, 74, 0.92);
+  transform: rotate(180deg);
+}
+
+.record-panel {
+  --record-accent: rgba(154, 108, 255, 0.72);
+  --record-glow: rgba(154, 108, 255, 0.14);
+  position: relative;
+  overflow: hidden;
+  border-color: var(--record-accent);
+  background:
+    radial-gradient(circle at 100% 0%, var(--record-glow), transparent 34%),
+    linear-gradient(180deg, rgba(29, 33, 61, 0.98), rgba(17, 20, 42, 0.96));
+}
+
+.record-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: var(--record-accent);
+}
+
+.record-panel-weight {
+  --record-accent: rgba(87, 242, 223, 0.68);
+  --record-glow: rgba(87, 242, 223, 0.15);
+}
+
+.record-panel-food {
+  --record-accent: rgba(123, 221, 112, 0.66);
+  --record-glow: rgba(123, 221, 112, 0.13);
+}
+
+.record-panel-exercise {
+  --record-accent: rgba(255, 184, 77, 0.7);
+  --record-glow: rgba(255, 184, 77, 0.13);
+}
+
+.record-panel-burn {
+  --record-accent: rgba(255, 106, 109, 0.72);
+  --record-glow: rgba(255, 106, 109, 0.13);
+}
+
+.collapsible-section.is-collapsed {
+  padding-bottom: 16px;
+}
+
+.collapsible-section.is-collapsed .section-head {
+  margin-bottom: 0;
+}
+
+.collapsible-body {
+  display: grid;
+  gap: 12px;
+}
+
+.collapsible-body[hidden] {
+  display: none;
+}
+
+.record-weight-form {
+  display: grid;
+  gap: 10px;
+}
+
+.weight-input-row label {
+  color: rgba(235, 250, 255, 0.9);
+  font-size: 0.98rem;
+}
+
+.weight-input-unit {
+  grid-template-columns: minmax(0, 1fr) 48px;
+  gap: 10px;
+}
+
+.weight-input-unit input {
+  min-height: 78px;
+  padding: 12px 16px;
+  border-color: rgba(87, 242, 223, 0.5);
+  background:
+    linear-gradient(180deg, rgba(14, 31, 45, 0.98), rgba(17, 20, 42, 0.98));
+  color: #f7fffe;
+  font-size: 2.35rem;
+  font-weight: 1000;
+  text-align: right;
+}
+
+.weight-input-unit span {
+  color: rgba(235, 250, 255, 0.9);
+  font-size: 1.08rem;
+}
+
+.record-weight-metrics {
+  margin-top: 2px;
+}
+
+.collapsible-body .record-actions {
+  margin-bottom: 0;
+}
+
+.collapsible-body .record-save-status {
+  margin: 0 2px;
 }
 
 .intake-total-card {
@@ -1676,6 +1803,112 @@ input:focus, select:focus, textarea:focus {
   display: grid;
   gap: 10px;
   margin-top: 10px;
+}
+
+.master-food-entry-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  align-items: end;
+  justify-items: center;
+  padding: 18px;
+  background: rgba(4, 8, 18, 0.58);
+  backdrop-filter: blur(10px);
+  animation: foodOverlayIn 160ms ease-out;
+}
+
+.master-food-entry-drawer {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(98, 220, 255, 0.34);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(16, 27, 48, 0.98), rgba(27, 24, 52, 0.97));
+  box-shadow: 0 24px 80px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.06);
+  animation: foodDrawerIn 180ms ease-out;
+}
+
+.custom-master-section {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(98, 220, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(8, 13, 30, 0.48);
+}
+
+.custom-master-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.custom-master-list {
+  display: grid;
+  gap: 8px;
+}
+
+.custom-master-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(154, 108, 255, 0.24);
+  border-radius: 8px;
+  background: rgba(17, 22, 43, 0.76);
+}
+
+.custom-master-item.editing {
+  border-color: rgba(91, 227, 155, 0.55);
+  background: rgba(16, 49, 40, 0.76);
+}
+
+.custom-master-item strong,
+.custom-master-item span {
+  display: block;
+}
+
+.custom-master-item span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.custom-master-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.master-food-form {
+  padding: 10px;
+  border: 1px solid rgba(154, 108, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(8, 13, 30, 0.4);
+}
+
+@keyframes foodOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes foodDrawerIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .meal-history-panel {
@@ -3402,7 +3635,7 @@ canvas {
   bottom: 12px;
   z-index: 10;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 4px;
   width: min(732px, calc(100vw - 20px));
   padding: 6px;
@@ -3458,6 +3691,11 @@ canvas {
   .metric-card strong { font-size: 1.02rem; }
   .weekly-summary { grid-template-columns: 1fr; }
   .inline-head { grid-template-columns: 1fr; }
+  .section-head-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+  }
   .compact-button { width: 100%; }
   .intake-total-card strong { font-size: 1.65rem; }
   .per-100-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -3466,6 +3704,11 @@ canvas {
   .pending-button-row { grid-template-columns: 1fr; }
   .meal-log-item,
   .meal-history-item { grid-template-columns: 1fr; }
+  .master-food-entry-overlay { padding: 10px; }
+  .master-food-entry-drawer { max-height: calc(100vh - 20px); }
+  .custom-master-head,
+  .custom-master-item { grid-template-columns: 1fr; }
+  .custom-master-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .master-builder-item { grid-template-columns: 1fr; }
   .master-builder-item .compact-button { width: 100%; }
   .meal-delete-button { width: 100%; }

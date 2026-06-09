@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=92">
+  <link rel="stylesheet" href="./styles.css?v=96">
 </head>
 <body>
   <div id="app">
@@ -66,162 +66,190 @@
           <div class="calendar-grid" id="calendarGrid"></div>
         </section>
 
-        <form class="entry-form" id="weightForm">
-          <div class="form-row">
-            <label for="weightInput">実測体重</label>
-            <div class="input-unit">
-              <input id="weightInput" type="text" inputmode="numeric" autocomplete="off" placeholder="78.0" required>
-              <span>kg</span>
+        <section class="section-block record-panel record-panel-weight collapsible-section is-collapsed" aria-labelledby="recordWeightTitle">
+          <div class="section-head inline-head">
+            <div>
+              <h2 id="recordWeightTitle">体重記録</h2>
+              <p>実測体重と目標までの距離を確認します。</p>
             </div>
+            <button class="collapse-toggle" type="button" data-collapse-toggle="recordWeightCollapse" aria-label="体重記録を開く" aria-expanded="false">⌄</button>
           </div>
-        </form>
+          <div class="collapsible-body" id="recordWeightCollapse" hidden>
+            <form class="record-weight-form" id="weightForm">
+              <div class="form-row weight-input-row">
+                <label for="weightInput">実測体重</label>
+                <div class="input-unit weight-input-unit">
+                  <input id="weightInput" type="text" inputmode="numeric" autocomplete="off" placeholder="78.0" required>
+                  <span>kg</span>
+                </div>
+              </div>
+            </form>
+            <div class="metric-grid record-weight-metrics">
+              <article class="metric-card">
+                <span>実測体重</span>
+                <strong id="actualWeight">--.- kg</strong>
+              </article>
+              <article class="metric-card">
+                <span>目標まで</span>
+                <strong id="remainingWeight">--.- kg</strong>
+              </article>
+              <article class="metric-card">
+                <span>BMI</span>
+                <strong id="bmiValue">--.-</strong>
+              </article>
+              <article class="metric-card">
+                <span>到達予測</span>
+                <strong id="forecastDate">--</strong>
+              </article>
+            </div>
+            <div class="record-actions">
+              <button class="primary-button" id="saveRecord" type="button">保存</button>
+              <button class="ghost-button" id="deleteRecord" type="button">削除</button>
+            </div>
+            <p class="record-save-status" id="saveStatus" aria-live="polite">端末内保存</p>
+          </div>
+        </section>
 
-        <section class="section-block nutrition-summary" aria-labelledby="recordNutritionTitle">
+        <section class="section-block record-panel record-panel-food nutrition-summary collapsible-section is-collapsed" aria-labelledby="recordNutritionTitle">
           <div class="section-head inline-head">
             <div>
               <h2 id="recordNutritionTitle">食事実績</h2>
               <p>今日食べたものの摂取量を合計します。</p>
             </div>
-            <button class="ghost-button compact-button" id="openFoodView" type="button">食事を追加</button>
-          </div>
-          <div class="intake-total-card">
-            <span>今日の摂取</span>
-            <strong id="recordNutritionKcal">0 kcal</strong>
-          </div>
-          <div class="nutrition-macro-grid">
-            <article id="recordProteinCard">
-              <span>P（たんぱく質）</span>
-              <strong id="recordNutritionProtein">0.0g</strong>
-            </article>
-            <article id="recordFatCard">
-              <span>F（脂質）</span>
-              <strong id="recordNutritionFat">0.0g</strong>
-            </article>
-            <article id="recordCarbsCard">
-              <span>C（炭水化物）</span>
-              <strong id="recordNutritionCarbs">0.0g</strong>
-            </article>
-          </div>
-          <p class="pfc-guidance-note" id="recordPfcNote">PFCバランスは食事登録後に表示します。</p>
-          <div class="intake-guidance-grid">
-            <article>
-              <span>下限目安</span>
-              <strong id="recordIntakeFloor">0 kcal</strong>
-            </article>
-            <article>
-              <span>上限目安</span>
-              <strong id="recordIntakeCeiling">0 kcal</strong>
-            </article>
-          </div>
-          <div class="intake-gauge" id="recordIntakeGauge" aria-label="摂取kcalゲージ">
-            <span class="intake-gauge-fill"></span>
-            <span class="intake-gauge-line lower" data-label="下限"></span>
-            <span class="intake-gauge-line upper" data-label="上限"></span>
-          </div>
-          <div class="intake-gauge-legend" aria-label="摂取kcalゲージの凡例">
-            <span><i class="legend-dot lower"></i>下限</span>
-            <span><i class="legend-dot upper"></i>上限</span>
-          </div>
-          <p class="intake-guidance-note" id="recordIntakeNote">基礎代謝と目標カロリー差から食事の目安を表示します。</p>
-          <div class="meal-log-list compact" id="recordMealLogList"></div>
-          <p class="empty-state" id="recordMealLogEmpty">まだ食事実績はありません。</p>
-        </section>
-
-        <div class="metric-grid">
-          <article class="metric-card">
-            <span>実測体重</span>
-            <strong id="actualWeight">--.- kg</strong>
-          </article>
-          <article class="metric-card">
-            <span>目標まで</span>
-            <strong id="remainingWeight">--.- kg</strong>
-          </article>
-          <article class="metric-card">
-            <span>BMI</span>
-            <strong id="bmiValue">--.-</strong>
-          </article>
-          <article class="metric-card">
-            <span>到達予測</span>
-            <strong id="forecastDate">--</strong>
-          </article>
-        </div>
-
-        <section class="section-block">
-          <div class="section-head">
-            <h2 id="recordTitle">運動実績</h2>
-          </div>
-          <div class="segmented-control" id="exerciseSegment" role="group" aria-label="運動実績">
-            <button type="button" data-exercise="false">休養</button>
-            <button type="button" data-exercise="true">実施</button>
-          </div>
-          <div class="exercise-motivation" id="exerciseMotivationPanel" aria-live="polite"></div>
-          <div class="generated-menu" id="recordGeneratedMenu"></div>
-        </section>
-
-        <section class="section-block burn-summary" aria-labelledby="burnSummaryTitle">
-          <div class="section-head">
-            <h2 id="burnSummaryTitle">燃焼サマリ</h2>
-          </div>
-          <div class="fat-burner heat-0" id="fatBurner" aria-live="polite">
-            <div class="fat-core" aria-hidden="true">
-              <svg class="fat-fire-figure" viewBox="0 0 180 110" focusable="false">
-                <defs>
-                  <radialGradient id="fatLumpGradient" cx="38%" cy="28%" r="72%">
-                    <stop offset="0" stop-color="#fff1ab"/>
-                    <stop offset="0.48" stop-color="#f0bd5d"/>
-                    <stop offset="1" stop-color="#9a5c2c"/>
-                  </linearGradient>
-                  <linearGradient id="flameHotGradient" x1="0" x2="0" y1="1" y2="0">
-                    <stop offset="0" stop-color="#b91c0b"/>
-                    <stop offset="0.38" stop-color="#ff5a1f"/>
-                    <stop offset="0.72" stop-color="#ffb02e"/>
-                    <stop offset="1" stop-color="#fff5ae"/>
-                  </linearGradient>
-                </defs>
-                <g class="heat-haze">
-                  <path class="haze h1" d="M51 45 C43 34 60 28 52 17"/>
-                  <path class="haze h2" d="M90 42 C80 29 99 23 90 10"/>
-                  <path class="haze h3" d="M130 45 C121 33 139 28 131 15"/>
-                </g>
-                <g class="fat-lump">
-                  <path class="fat-main" d="M49 45 C53 28 72 24 85 32 C96 18 120 25 124 43 C143 44 153 59 147 73 C141 88 119 88 106 81 C96 93 72 91 65 78 C51 80 39 72 40 60 C40 54 43 49 49 45Z" fill="url(#fatLumpGradient)"/>
-                  <path class="fat-gloss" d="M64 43 C70 35 80 34 86 39" />
-                  <circle class="fat-pore p1" cx="75" cy="55" r="3"/>
-                  <circle class="fat-pore p2" cx="105" cy="50" r="2.7"/>
-                  <circle class="fat-pore p3" cx="94" cy="69" r="2.5"/>
-                </g>
-                <g class="flame-pack">
-                  <path class="flame f1" fill="url(#flameHotGradient)" d="M56 101 C37 85 47 64 61 50 C60 67 82 77 67 100Z"/>
-                  <path class="flame f2" fill="url(#flameHotGradient)" d="M90 103 C67 84 82 58 96 38 C100 59 123 78 105 102Z"/>
-                  <path class="flame f3" fill="url(#flameHotGradient)" d="M124 101 C107 83 119 66 134 51 C133 68 149 82 137 100Z"/>
-                  <path class="flame f4" fill="url(#flameHotGradient)" d="M75 103 C63 91 70 78 80 69 C80 82 95 91 86 103Z"/>
-                  <path class="flame f5" fill="url(#flameHotGradient)" d="M112 103 C101 91 106 79 117 68 C118 82 130 92 123 103Z"/>
-                </g>
-                <g class="grill">
-                  <path d="M36 93 H150"/>
-                  <path d="M45 84 H141"/>
-                  <path d="M55 84 L48 101"/>
-                  <path d="M82 84 L78 103"/>
-                  <path d="M110 84 L114 103"/>
-                  <path d="M136 84 L144 101"/>
-                </g>
-                <g class="embers">
-                  <circle class="ember e1" cx="49" cy="93" r="2"/>
-                  <circle class="ember e2" cx="92" cy="96" r="1.8"/>
-                  <circle class="ember e3" cx="134" cy="91" r="2.2"/>
-                </g>
-              </svg>
+            <div class="section-head-actions">
+              <button class="ghost-button compact-button" id="openFoodView" type="button">食事を追加</button>
+              <button class="collapse-toggle" type="button" data-collapse-toggle="recordFoodCollapse" aria-label="食事実績を開く" aria-expanded="false">⌄</button>
             </div>
-            <p id="fatBurnText">食事実績を登録すると、今日のカロリー収支を表示します。</p>
+          </div>
+          <div class="collapsible-body" id="recordFoodCollapse" hidden>
+            <div class="intake-total-card">
+              <span>今日の摂取</span>
+              <strong id="recordNutritionKcal">0 kcal</strong>
+            </div>
+            <div class="nutrition-macro-grid">
+              <article id="recordProteinCard">
+                <span>P（たんぱく質）</span>
+                <strong id="recordNutritionProtein">0.0g</strong>
+              </article>
+              <article id="recordFatCard">
+                <span>F（脂質）</span>
+                <strong id="recordNutritionFat">0.0g</strong>
+              </article>
+              <article id="recordCarbsCard">
+                <span>C（炭水化物）</span>
+                <strong id="recordNutritionCarbs">0.0g</strong>
+              </article>
+            </div>
+            <p class="pfc-guidance-note" id="recordPfcNote">PFCバランスは食事登録後に表示します。</p>
+            <div class="intake-guidance-grid">
+              <article>
+                <span>下限目安</span>
+                <strong id="recordIntakeFloor">0 kcal</strong>
+              </article>
+              <article>
+                <span>上限目安</span>
+                <strong id="recordIntakeCeiling">0 kcal</strong>
+              </article>
+            </div>
+            <div class="intake-gauge" id="recordIntakeGauge" aria-label="摂取kcalゲージ">
+              <span class="intake-gauge-fill"></span>
+              <span class="intake-gauge-line lower" data-label="下限"></span>
+              <span class="intake-gauge-line upper" data-label="上限"></span>
+            </div>
+            <div class="intake-gauge-legend" aria-label="摂取kcalゲージの凡例">
+              <span><i class="legend-dot lower"></i>下限</span>
+              <span><i class="legend-dot upper"></i>上限</span>
+            </div>
+            <p class="intake-guidance-note" id="recordIntakeNote">基礎代謝と目標カロリー差から食事の目安を表示します。</p>
+            <div class="meal-log-list compact" id="recordMealLogList"></div>
+            <p class="empty-state" id="recordMealLogEmpty">まだ食事実績はありません。</p>
           </div>
         </section>
 
-        <div class="record-actions">
-          <button class="primary-button" id="saveRecord" type="button">保存</button>
-          <button class="ghost-button" id="deleteRecord" type="button">削除</button>
-        </div>
-        <p class="record-save-status" id="saveStatus" aria-live="polite">端末内保存</p>
+        <section class="section-block record-panel record-panel-exercise collapsible-section is-collapsed" aria-labelledby="recordTitle">
+          <div class="section-head inline-head">
+            <div>
+              <h2 id="recordTitle">運動実績</h2>
+            </div>
+            <button class="collapse-toggle" type="button" data-collapse-toggle="recordExerciseCollapse" aria-label="運動実績を開く" aria-expanded="false">⌄</button>
+          </div>
+          <div class="collapsible-body" id="recordExerciseCollapse" hidden>
+            <div class="segmented-control" id="exerciseSegment" role="group" aria-label="運動実績">
+              <button type="button" data-exercise="false">休養</button>
+              <button type="button" data-exercise="true">実施</button>
+            </div>
+            <div class="exercise-motivation" id="exerciseMotivationPanel" aria-live="polite"></div>
+            <div class="generated-menu" id="recordGeneratedMenu"></div>
+          </div>
+        </section>
 
+        <section class="section-block record-panel record-panel-burn burn-summary collapsible-section is-collapsed" aria-labelledby="burnSummaryTitle">
+          <div class="section-head inline-head">
+            <div>
+              <h2 id="burnSummaryTitle">燃焼サマリ</h2>
+              <p>食事と運動から今日のカロリー収支を確認します。</p>
+            </div>
+            <button class="collapse-toggle" type="button" data-collapse-toggle="recordBurnCollapse" aria-label="燃焼サマリを開く" aria-expanded="false">⌄</button>
+          </div>
+          <div class="collapsible-body" id="recordBurnCollapse" hidden>
+            <div class="fat-burner heat-0" id="fatBurner" aria-live="polite">
+              <div class="fat-core" aria-hidden="true">
+                <svg class="fat-fire-figure" viewBox="0 0 180 110" focusable="false">
+                  <defs>
+                    <radialGradient id="fatLumpGradient" cx="38%" cy="28%" r="72%">
+                      <stop offset="0" stop-color="#fff1ab"/>
+                      <stop offset="0.48" stop-color="#f0bd5d"/>
+                      <stop offset="1" stop-color="#9a5c2c"/>
+                    </linearGradient>
+                    <linearGradient id="flameHotGradient" x1="0" x2="0" y1="1" y2="0">
+                      <stop offset="0" stop-color="#b91c0b"/>
+                      <stop offset="0.38" stop-color="#ff5a1f"/>
+                      <stop offset="0.72" stop-color="#ffb02e"/>
+                      <stop offset="1" stop-color="#fff5ae"/>
+                    </linearGradient>
+                  </defs>
+                  <g class="heat-haze">
+                    <path class="haze h1" d="M51 45 C43 34 60 28 52 17"/>
+                    <path class="haze h2" d="M90 42 C80 29 99 23 90 10"/>
+                    <path class="haze h3" d="M130 45 C121 33 139 28 131 15"/>
+                  </g>
+                  <g class="fat-lump">
+                    <path class="fat-main" d="M49 45 C53 28 72 24 85 32 C96 18 120 25 124 43 C143 44 153 59 147 73 C141 88 119 88 106 81 C96 93 72 91 65 78 C51 80 39 72 40 60 C40 54 43 49 49 45Z" fill="url(#fatLumpGradient)"/>
+                    <path class="fat-gloss" d="M64 43 C70 35 80 34 86 39" />
+                    <circle class="fat-pore p1" cx="75" cy="55" r="3"/>
+                    <circle class="fat-pore p2" cx="105" cy="50" r="2.7"/>
+                    <circle class="fat-pore p3" cx="94" cy="69" r="2.5"/>
+                  </g>
+                  <g class="flame-pack">
+                    <path class="flame f1" fill="url(#flameHotGradient)" d="M56 101 C37 85 47 64 61 50 C60 67 82 77 67 100Z"/>
+                    <path class="flame f2" fill="url(#flameHotGradient)" d="M90 103 C67 84 82 58 96 38 C100 59 123 78 105 102Z"/>
+                    <path class="flame f3" fill="url(#flameHotGradient)" d="M124 101 C107 83 119 66 134 51 C133 68 149 82 137 100Z"/>
+                    <path class="flame f4" fill="url(#flameHotGradient)" d="M75 103 C63 91 70 78 80 69 C80 82 95 91 86 103Z"/>
+                    <path class="flame f5" fill="url(#flameHotGradient)" d="M112 103 C101 91 106 79 117 68 C118 82 130 92 123 103Z"/>
+                  </g>
+                  <g class="grill">
+                    <path d="M36 93 H150"/>
+                    <path d="M45 84 H141"/>
+                    <path d="M55 84 L48 101"/>
+                    <path d="M82 84 L78 103"/>
+                    <path d="M110 84 L114 103"/>
+                    <path d="M136 84 L144 101"/>
+                  </g>
+                  <g class="embers">
+                    <circle class="ember e1" cx="49" cy="93" r="2"/>
+                    <circle class="ember e2" cx="92" cy="96" r="1.8"/>
+                    <circle class="ember e3" cx="134" cy="91" r="2.2"/>
+                  </g>
+                </svg>
+              </div>
+              <p id="fatBurnText">食事実績を登録すると、今日のカロリー収支を表示します。</p>
+            </div>
+          </div>
+        </section>
+
+      </section>
+
+      <section class="view trend-view" id="view-trend" aria-labelledby="trendTitle">
         <section class="section-block trend-in-record" aria-labelledby="trendTitle">
           <div class="section-head">
             <h2 id="trendTitle">推移</h2>
@@ -271,9 +299,9 @@
           <div class="section-head inline-head">
             <div>
               <h2 id="foodSearchTitle">食品検索</h2>
-              <p>食材名、大分類、バーコード番号を同じ欄で検索できます。</p>
+              <p>食品名、大分類、バーコード番号を同じ欄で検索できます。</p>
             </div>
-            <button class="ghost-button compact-button" id="showMasterFoodEntry" type="button">食材登録 📝</button>
+            <button class="ghost-button compact-button" id="showMasterFoodEntry" type="button">食品登録 📝</button>
           </div>
           <form class="unified-food-search" id="unifiedFoodSearchForm">
             <div class="form-row">
@@ -611,6 +639,7 @@
       <button class="tab" data-view="food" type="button">食事</button>
       <button class="tab" data-view="exercise" type="button">運動</button>
       <button class="tab" data-view="timer" type="button">タイマー</button>
+      <button class="tab" data-view="trend" type="button">推移</button>
     </nav>
   </div>
   <div class="result-modal" id="resultModal" aria-hidden="true">
@@ -624,6 +653,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=92"></script>
+  <script src="./app.js?v=96"></script>
 </body>
 </html>
