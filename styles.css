@@ -1599,6 +1599,10 @@ input:focus, select:focus, textarea:focus {
   display: none;
 }
 
+.intake-gauge.no-upper .intake-gauge-line.upper {
+  display: none;
+}
+
 .intake-gauge-line::after {
   content: attr(data-label);
   display: none;
@@ -1728,6 +1732,44 @@ input:focus, select:focus, textarea:focus {
 .meal-history-list {
   display: grid;
   gap: 8px;
+}
+
+.today-meal-log-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(98, 220, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(8, 13, 30, 0.42);
+}
+
+.today-meal-log-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.today-meal-log-head h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.today-meal-log-head span {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(98, 220, 255, 0.12);
+  color: var(--green-2);
+  font-size: 0.7rem;
+  font-weight: 1000;
+}
+
+.compact-meal-list {
+  gap: 6px;
 }
 
 .food-result-button {
@@ -2244,15 +2286,16 @@ input:focus, select:focus, textarea:focus {
 }
 
 .meal-log-item.compact {
-  padding: 8px;
+  gap: 8px;
+  padding: 7px;
 }
 
 .meal-log-item.compact .meal-log-content {
-  gap: 5px;
+  gap: 4px;
 }
 
 .meal-log-item.compact .meal-food-name {
-  font-size: 0.96rem;
+  font-size: 0.92rem;
 }
 
 .meal-log-item.compact .meal-log-meta-grid {
@@ -2260,8 +2303,29 @@ input:focus, select:focus, textarea:focus {
 }
 
 .meal-log-item.compact .meal-log-meta-grid span {
-  min-height: 40px;
-  padding: 6px 7px;
+  min-height: 36px;
+  padding: 5px 6px;
+}
+
+.meal-log-item.compact .meal-source-badge {
+  min-height: 20px;
+  padding: 2px 6px;
+  font-size: 0.64rem;
+}
+
+.meal-log-item.compact .meal-log-label,
+.meal-log-item.compact .meal-log-time,
+.meal-log-item.compact .meal-log-pfc {
+  font-size: 0.7rem;
+}
+
+.meal-log-item.compact .meal-log-meta-grid small {
+  font-size: 0.62rem;
+}
+
+.meal-log-item.compact .meal-log-meta-grid b {
+  margin-top: 3px;
+  font-size: 0.82rem;
 }
 
 .meal-delete-button {

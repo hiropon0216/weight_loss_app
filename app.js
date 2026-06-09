@@ -1840,7 +1840,7 @@ function renderFoodTodaySummary() {
     note: "#foodPfcNote",
   });
   renderIntakeGuidance("#foodIntakeFloor", "#foodIntakeCeiling", "#foodIntakeNote", "#foodIntakeGauge", "#foodTodayKcal");
-  renderMealLogList("#foodMealLogList", "#foodMealLogEmpty", false);
+  renderMealLogList("#foodMealLogList", "#foodMealLogEmpty", true);
 }
 
 function pfcGuidance(totals) {
@@ -1960,7 +1960,7 @@ function renderIntakeGuidance(floorSelector, ceilingSelector, noteSelector, gaug
 function renderIntakeGauge(selector, guidance) {
   const gauge = document.querySelector(selector);
   if (!gauge) return;
-  gauge.classList.remove("warn", "danger", "empty", "overlap");
+  gauge.classList.remove("warn", "danger", "empty", "overlap", "no-upper");
   if (!guidance) {
     gauge.classList.add("empty");
     gauge.style.setProperty("--intake-pct", "0%");
@@ -1976,6 +1976,7 @@ function renderIntakeGauge(selector, guidance) {
   gauge.style.setProperty("--lower-pct", `${lowerPct}%`);
   gauge.style.setProperty("--upper-pct", `${upperPct}%`);
   gauge.classList.toggle("overlap", Math.abs(upperPct - lowerPct) < 1);
+  gauge.classList.toggle("no-upper", guidance.targetConflict);
   if (guidance.targetConflict || (guidance.hasFoodLog && (guidance.intake < guidance.lower || guidance.intake > guidance.upper))) {
     gauge.classList.add("danger");
   }
@@ -2010,6 +2011,8 @@ function renderMealLogList(listSelector, emptySelector, compact) {
   const empty = document.querySelector(emptySelector);
   if (!list || !empty) return;
   const logs = mealLogsForDate(selectedDate);
+  const counter = listSelector === "#foodMealLogList" ? document.querySelector("#foodMealLogCount") : null;
+  if (counter) counter.textContent = `${logs.length}件`;
   empty.classList.toggle("is-hidden", Boolean(logs.length));
   list.innerHTML = logs.map((entry) => {
     const nutrients = entry.nutrientsSnapshot || {};

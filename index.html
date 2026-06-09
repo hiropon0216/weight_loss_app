@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=103">
+  <link rel="stylesheet" href="./styles.css?v=104">
 </head>
 <body>
   <div id="app">
@@ -373,8 +373,14 @@
           </div>
           <p class="intake-guidance-note" id="foodIntakeNote">基礎代謝、生活消費、目標カロリー差から食事の目安を表示します。</p>
           <div class="pending-food-result" id="pendingFoodResult"></div>
-          <div class="meal-log-list" id="foodMealLogList"></div>
-          <p class="empty-state" id="foodMealLogEmpty">今日の食事はまだ登録されていません。</p>
+          <section class="today-meal-log-panel" aria-labelledby="foodMealLogTitle">
+            <div class="today-meal-log-head">
+              <h3 id="foodMealLogTitle">今日摂取したもの</h3>
+              <span id="foodMealLogCount">0件</span>
+            </div>
+            <div class="meal-log-list compact-meal-list" id="foodMealLogList"></div>
+            <p class="empty-state" id="foodMealLogEmpty">今日の食事はまだ登録されていません。</p>
+          </section>
         </section>
       </section>
 
@@ -651,6 +657,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=103"></script>
+  <script src="./app.js?v=104"></script>
 </body>
 </html>
