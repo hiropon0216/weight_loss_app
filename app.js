@@ -6,7 +6,6 @@ const WEEKLY_BOSS_HP = 2000;
 const MIN_RECORD_WEIGHT = 30;
 const MAX_RECORD_WEIGHT = 199.9;
 const CUSTOM_TIMER_PRESET_ID = "custom";
-const SAVED_TIMER_PRESET_PREFIX = "saved:";
 const GENERIC_FOOD_MASTER_URL = "./data/generic_foods_core.json?v=1";
 const PROCESSED_FOOD_MASTER_URL = "./data/processed_foods_core.json?v=1";
 const ESTIMATED_PROCESSED_FOOD_MASTER_URL = "./data/processed_foods_estimated.json?v=1";
@@ -17,19 +16,6 @@ const PFC_TARGETS = {
   fatEnergyRatio: { min: 0.2, max: 0.3 },
   carbsEnergyRatio: { min: 0.35, max: 0.55 },
 };
-const OPEN_FOOD_FACTS_FIELDS = [
-  "code",
-  "status",
-  "result",
-  "product_name",
-  "brands",
-  "quantity",
-  "product_quantity",
-  "product_quantity_unit",
-  "serving_size",
-  "nutrition_data_per",
-  "nutriments",
-].join(",");
 const FALLBACK_GENERIC_FOODS = [
   {
     id: "fallback:lettuce-raw",
@@ -42,18 +28,18 @@ const FALLBACK_GENERIC_FOODS = [
   },
 ];
 const ROUND_TIMER_PRESETS = [
-  { id: "boxing-standard", name: "3分 × 3R", prepSec: 10, workSec: 180, restSec: 60, rounds: 3 },
-  { id: "boxing-short", name: "2分 × 3R", prepSec: 10, workSec: 120, restSec: 60, rounds: 3 },
-  { id: "hiit", name: "HIIT", prepSec: 10, workSec: 30, restSec: 15, rounds: 8 },
-  { id: "tabata", name: "タバタ", prepSec: 10, workSec: 20, restSec: 10, rounds: 8 },
-  { id: CUSTOM_TIMER_PRESET_ID, name: "カスタム", prepSec: 10, workSec: 180, restSec: 60, rounds: 3 },
+  { id: "boxing-6r", name: "3分 × 6R", prepSec: 30, workSec: 180, restSec: 20, rounds: 6 },
+  { id: "boxing-12r", name: "3分 × 12R", prepSec: 30, workSec: 180, restSec: 20, rounds: 12 },
+  { id: "boxing-18r", name: "3分 × 18R", prepSec: 30, workSec: 180, restSec: 20, rounds: 18 },
+  { id: "tabata", name: "タバタ 20秒 × 8R", prepSec: 30, workSec: 20, restSec: 10, rounds: 8 },
+  { id: CUSTOM_TIMER_PRESET_ID, name: "カスタム", prepSec: 30, workSec: 180, restSec: 20, rounds: 6 },
 ];
 const DEFAULT_ROUND_TIMER = {
-  presetId: "boxing-standard",
-  prepSec: 10,
+  presetId: "boxing-6r",
+  prepSec: 30,
   workSec: 180,
-  restSec: 60,
-  rounds: 3,
+  restSec: 20,
+  rounds: 6,
   sound: true,
   savedPresets: [],
 };
@@ -97,7 +83,7 @@ let selectedDate = todayIso();
 let calendarMonth = selectedDate.slice(0, 7);
 let genericFoods = FALLBACK_GENERIC_FOODS;
 let foodSearchQuery = "";
-let foodSearchStatus = "バーコードはカメラ撮影、または番号入力で検索できます。";
+let foodSearchStatus = "食品名やカテゴリで検索できます。";
 let pendingFoodEntry = null;
 let masterFoodEntryOpen = false;
 let editingMasterFoodId = "";
@@ -198,38 +184,29 @@ function clampInt(value, min, max, fallback) {
   return Math.min(max, Math.max(min, Math.round(number)));
 }
 
-function normalizeSavedTimerPresets(presets) {
-  if (!Array.isArray(presets)) return [];
-  return presets
-    .filter((preset) => preset && typeof preset === "object")
-    .map((preset) => ({
-      id: typeof preset.id === "string" && preset.id ? preset.id : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      name: typeof preset.name === "string" && preset.name.trim() ? preset.name.trim().slice(0, 32) : "保存設定",
-      prepSec: clampInt(preset.prepSec, 0, 600, DEFAULT_ROUND_TIMER.prepSec),
-      workSec: clampInt(preset.workSec, 1, 3600, DEFAULT_ROUND_TIMER.workSec),
-      restSec: clampInt(preset.restSec, 0, 1800, DEFAULT_ROUND_TIMER.restSec),
-      rounds: clampInt(preset.rounds, 1, 99, DEFAULT_ROUND_TIMER.rounds),
-    }))
-    .slice(0, 20);
-}
-
 function normalizeRoundTimer(timer) {
-  const savedPresets = normalizeSavedTimerPresets(timer?.savedPresets);
+  const savedPresets = [];
   const legacyPresetMap = {
-    "sandbag-standard": "boxing-standard",
-    "sandbag-short": "boxing-short",
+    "sandbag-standard": "boxing-6r",
+    "sandbag-short": "boxing-6r",
+    "boxing-standard": "boxing-6r",
+    "boxing-short": "boxing-6r",
+    "hiit": "tabata",
   };
   const normalizedPresetId = legacyPresetMap[timer?.presetId] || timer?.presetId;
-  const presetId = ROUND_TIMER_PRESETS.some((preset) => preset.id === normalizedPresetId)
-    || savedPresets.some((preset) => `${SAVED_TIMER_PRESET_PREFIX}${preset.id}` === normalizedPresetId)
+  const matchedPreset = ROUND_TIMER_PRESETS.find((preset) => preset.id === normalizedPresetId);
+  const presetId = matchedPreset
     ? normalizedPresetId
     : DEFAULT_ROUND_TIMER.presetId;
+  const presetDefaults = presetId !== CUSTOM_TIMER_PRESET_ID
+    ? (matchedPreset || ROUND_TIMER_PRESETS.find((preset) => preset.id === presetId))
+    : null;
   return {
     presetId,
-    prepSec: clampInt(timer?.prepSec, 0, 600, DEFAULT_ROUND_TIMER.prepSec),
-    workSec: clampInt(timer?.workSec, 1, 3600, DEFAULT_ROUND_TIMER.workSec),
-    restSec: clampInt(timer?.restSec, 0, 1800, DEFAULT_ROUND_TIMER.restSec),
-    rounds: clampInt(timer?.rounds, 1, 99, DEFAULT_ROUND_TIMER.rounds),
+    prepSec: presetDefaults ? presetDefaults.prepSec : clampInt(timer?.prepSec, 0, 600, DEFAULT_ROUND_TIMER.prepSec),
+    workSec: presetDefaults ? presetDefaults.workSec : clampInt(timer?.workSec, 1, 3600, DEFAULT_ROUND_TIMER.workSec),
+    restSec: presetDefaults ? presetDefaults.restSec : clampInt(timer?.restSec, 0, 1800, DEFAULT_ROUND_TIMER.restSec),
+    rounds: presetDefaults ? presetDefaults.rounds : clampInt(timer?.rounds, 1, 99, DEFAULT_ROUND_TIMER.rounds),
     sound: timer?.sound !== false,
     savedPresets,
   };
@@ -518,11 +495,6 @@ function formatGram(value) {
   return `${round1(Number(value) || 0).toFixed(1)}g`;
 }
 
-function optionalNumber(value) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-}
-
 function optionalInputNumber(selector) {
   const value = document.querySelector(selector)?.value;
   if (value === "" || value === null || value === undefined) return 0;
@@ -562,30 +534,6 @@ function syncWeightInputFormatting() {
   if (input.value !== formatted) input.value = formatted;
 }
 
-function parseGrams(value) {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value !== "string") return null;
-  const normalized = value.replace(",", ".").toLowerCase();
-  const match = normalized.match(/([0-9]+(?:\.[0-9]+)?)\s*(g|ｇ|gram|grams)/);
-  if (!match) return null;
-  return Number(match[1]);
-}
-
-function nutrimentValue(nutriments, key) {
-  return optionalNumber(nutriments?.[key]);
-}
-
-function nutrimentsByBasis(nutriments, suffix) {
-  return {
-    energyKcal: nutrimentValue(nutriments, `energy-kcal_${suffix}`),
-    proteinG: nutrimentValue(nutriments, `proteins_${suffix}`),
-    fatG: nutrimentValue(nutriments, `fat_${suffix}`),
-    carbsG: nutrimentValue(nutriments, `carbohydrates_${suffix}`),
-    fiberG: nutrimentValue(nutriments, `fiber_${suffix}`),
-    saltG: nutrimentValue(nutriments, `salt_${suffix}`),
-  };
-}
-
 function emptyNutrients() {
   return { energyKcal: 0, proteinG: 0, fatG: 0, carbsG: 0, fiberG: 0, saltG: 0 };
 }
@@ -599,132 +547,6 @@ function roundNutrients(nutrients) {
     fiberG: round1(Number(nutrients.fiberG) || 0),
     saltG: round2(Number(nutrients.saltG) || 0),
   };
-}
-
-function scaleNutrients(nutrients, factor) {
-  return roundNutrients({
-    energyKcal: (Number(nutrients.energyKcal) || 0) * factor,
-    proteinG: (Number(nutrients.proteinG) || 0) * factor,
-    fatG: (Number(nutrients.fatG) || 0) * factor,
-    carbsG: (Number(nutrients.carbsG) || 0) * factor,
-    fiberG: (Number(nutrients.fiberG) || 0) * factor,
-    saltG: (Number(nutrients.saltG) || 0) * factor,
-  });
-}
-
-function hasKcal(nutrients) {
-  return Number.isFinite(Number(nutrients?.energyKcal));
-}
-
-function normalizeBarcodeProduct(payload, barcode) {
-  if (!payload || payload.status !== "success" || !payload.product) {
-    return { found: false, code: barcode };
-  }
-  const product = payload.product;
-  const nutriments = product.nutriments || {};
-  const perServingRaw = nutrimentsByBasis(nutriments, "serving");
-  const per100Raw = nutrimentsByBasis(nutriments, "100g");
-  const packageSizeG = optionalNumber(product.product_quantity) || parseGrams(product.quantity);
-  const servingSizeG = parseGrams(product.serving_size) || packageSizeG;
-  const name = product.product_name || "名称未登録の商品";
-  const brand = product.brands || "";
-  const base = {
-    code: payload.code || barcode,
-    name,
-    brand,
-    quantityLabel: product.quantity || "",
-    servingSizeLabel: product.serving_size || "",
-    packageSizeG,
-    servingSizeG,
-    rawBasis: product.nutrition_data_per || "",
-  };
-
-  if (hasKcal(perServingRaw)) {
-    return {
-      found: true,
-      complete: true,
-      basis: "serving",
-      unit: "食",
-      amountLabelBase: servingSizeG ? `1食 ${round1(servingSizeG)}g` : "1食",
-      amountGPerUnit: servingSizeG || 0,
-      nutrientsPerUnit: roundNutrients(perServingRaw),
-      nutrientsPer100g: hasKcal(per100Raw) ? roundNutrients(per100Raw) : null,
-      ...base,
-    };
-  }
-
-  if (hasKcal(per100Raw) && packageSizeG) {
-    return {
-      found: true,
-      complete: true,
-      basis: "package",
-      unit: "個",
-      amountLabelBase: `1個 ${round1(packageSizeG)}g`,
-      amountGPerUnit: packageSizeG,
-      nutrientsPerUnit: scaleNutrients(per100Raw, packageSizeG / 100),
-      nutrientsPer100g: roundNutrients(per100Raw),
-      ...base,
-    };
-  }
-
-  if (hasKcal(per100Raw)) {
-    return {
-      found: true,
-      complete: true,
-      basis: "gram",
-      unit: "g",
-      amountLabelBase: "100g",
-      amountGPerUnit: 1,
-      nutrientsPerUnit: roundNutrients(per100Raw),
-      nutrientsPer100g: roundNutrients(per100Raw),
-      ...base,
-    };
-  }
-
-  return {
-    found: true,
-    complete: false,
-    reason: "nutrition_missing",
-    ...base,
-  };
-}
-
-async function lookupBarcodeProduct(barcode) {
-  const code = barcode.replace(/\D/g, "");
-  if (!code) throw new Error("barcode_required");
-  const endpoint = `https://world.openfoodfacts.org/api/v3/product/${encodeURIComponent(code)}.json?fields=${encodeURIComponent(OPEN_FOOD_FACTS_FIELDS)}`;
-  const response = await fetch(endpoint, { method: "GET" });
-  const payload = await response.json();
-  return normalizeBarcodeProduct(payload, code);
-}
-
-function calculateBarcodeNutrients(product, amount) {
-  if (!product || !product.complete) return emptyNutrients();
-  const value = Number(amount) || 0;
-  if (product.basis === "gram") {
-    return scaleNutrients(product.nutrientsPerUnit, value / 100);
-  }
-  return scaleNutrients(product.nutrientsPerUnit, value);
-}
-
-function barcodeAmountG(product, amount) {
-  const value = Number(amount) || 0;
-  if (!product) return 0;
-  if (product.basis === "gram") return value;
-  return product.amountGPerUnit ? round1(product.amountGPerUnit * value) : 0;
-}
-
-function barcodeAmountLabel(product, amount) {
-  const value = Number(amount) || 0;
-  if (!product) return "";
-  if (product.basis === "gram") return `${round1(value)}g`;
-  const unitValue = Number.isInteger(value) ? String(value) : String(round1(value));
-  return `${unitValue}${product.unit}`;
-}
-
-function barcodeDisplayName(product) {
-  if (!product) return "";
-  return [product.brand, product.name].filter(Boolean).join(" ");
 }
 
 function latestEntry() {
@@ -767,7 +589,7 @@ function trendPacePerWeek() {
 }
 
 function requiredPacePerWeek() {
-  const referenceDate = latestTrend()?.date || latestEntry()?.date || todayIso();
+  const referenceDate = latestEntry()?.date || todayIso();
   const baseWeight = currentBodyWeightKg();
   const daysLeft = daysBetween(referenceDate, state.settings.goalDate);
   if (daysLeft <= 0) return null;
@@ -775,10 +597,10 @@ function requiredPacePerWeek() {
 }
 
 function forecastGoalDate() {
-  const latest = latestTrend();
+  const latest = latestEntry();
   const pace = trendPacePerWeek();
   if (!latest || pace === null || pace >= -0.01) return null;
-  const remaining = latest.trendKg - state.settings.goalWeightKg;
+  const remaining = latest.weightKg - state.settings.goalWeightKg;
   if (remaining <= 0) return latest.date;
   const days = Math.round((remaining / Math.abs(pace)) * 7);
   const d = new Date(`${latest.date}T00:00:00`);
@@ -800,7 +622,7 @@ function basalMetabolicRate(weightKg = currentBodyWeightKg()) {
 }
 
 function requiredDailyDeficitKcal() {
-  const referenceDate = latestTrend()?.date || latestEntry()?.date || todayIso();
+  const referenceDate = latestEntry()?.date || todayIso();
   const daysLeft = daysBetween(referenceDate, state.settings.goalDate);
   const baseWeight = currentBodyWeightKg();
   const remainingKg = baseWeight - state.settings.goalWeightKg;
@@ -824,14 +646,11 @@ function intakeGuidance(date) {
   const exercise = exerciseBurnForDate(date);
   const exerciseCredit = exerciseIntakeCreditKcal(date);
   const lifestyleCredit = lifestyleIntakeCreditKcal(bmr);
-  const lower = bmr;
   const targetUpper = Math.round(bmr + lifestyleCredit + exerciseCredit - required);
   const upper = Math.max(0, targetUpper);
   const intake = Math.round(nutritionTotals(date).energyKcal);
   const availableBurn = bmr + lifestyleCredit + exerciseCredit;
-  const minimumDeficit = Math.max(0, availableBurn - lower);
-  const targetConflict = upper < lower;
-  const deficitShortfallAtMinimum = Math.max(0, required - minimumDeficit);
+  const targetConflict = targetUpper < 0;
   const actualDeficit = Math.round(availableBurn - intake);
   return {
     bmr,
@@ -840,11 +659,8 @@ function intakeGuidance(date) {
     lifestyleCredit,
     availableBurn,
     required,
-    lower,
     upper,
     targetConflict,
-    minimumDeficit,
-    deficitShortfallAtMinimum,
     intake,
     actualDeficit,
     hasFoodLog: mealLogsForDate(date).length > 0,
@@ -872,19 +688,27 @@ function render() {
 
 function renderToday() {
   const selectedWeight = state.weightEntries.find((entry) => entry.date === selectedDate);
-  const trend = latestTrend();
+  const latestActual = latestEntry();
   const target = state.settings.goalWeightKg;
-  const trendWeight = trend?.trendKg ?? state.settings.startWeightKg;
-  const bmiBaseWeight = selectedWeight?.weightKg ?? trend?.trendKg ?? state.settings.startWeightKg;
+  const displayWeight = selectedWeight?.weightKg ?? latestActual?.weightKg ?? null;
+  const progressWeight = displayWeight ?? state.settings.startWeightKg;
+  const bmiBaseWeight = selectedWeight?.weightKg ?? progressWeight;
   const start = state.settings.startWeightKg;
   const totalToLose = Math.max(0.1, start - target);
-  const lost = Math.max(0, start - trendWeight);
+  const lost = Math.max(0, start - progressWeight);
   const progress = Math.max(0, Math.min(100, (lost / totalToLose) * 100));
-  const remaining = Math.max(0, trendWeight - target);
+  const remaining = Math.max(0, progressWeight - target);
   const forecast = forecastGoalDate();
 
-  setText("#trendWeight", trend ? trend.trendKg.toFixed(1) : "--.-");
-  setText("#trendCaption", trend ? `${trend.date}時点。実測の揺れを25%ずつ反映しています。` : "朝の体重を入力すると、ぶれをならして表示します。");
+  setText("#trendWeight", displayWeight !== null ? displayWeight.toFixed(1) : "--.-");
+  setText(
+    "#trendCaption",
+    selectedWeight
+      ? `${selectedDate}の実測体重です。`
+      : latestActual
+        ? `${latestActual.date}の実測体重です。選択日は未記録です。`
+        : "実測体重を入力すると表示します。"
+  );
   setText("#progressPercent", `${Math.round(progress)}%`);
   setText("#actualWeight", selectedWeight ? `${selectedWeight.weightKg.toFixed(1)} kg` : "--.- kg");
   setText("#remainingWeight", `${remaining.toFixed(1)} kg`);
@@ -1036,14 +860,8 @@ function renderFoodSearch() {
   if (document.activeElement !== input) input.value = foodSearchQuery;
   if (status) status.textContent = foodSearchStatus;
   const rawQuery = foodSearchQuery.trim();
-  const barcodeCandidate = rawQuery.replace(/\D/g, "");
-  const compactQuery = rawQuery.replace(/[\s-]/g, "");
   if (!rawQuery) {
-    container.innerHTML = `<p class="empty-state">食品名、カテゴリ、バーコード番号を入力してください。</p>`;
-    return;
-  }
-  if (barcodeCandidate.length >= 8 && barcodeCandidate === compactQuery) {
-    container.innerHTML = `<p class="empty-state">バーコード番号は商品DBを検索し、結果を食事実績に表示します。</p>`;
+    container.innerHTML = `<p class="empty-state">食品名やカテゴリを入力してください。</p>`;
     return;
   }
   const results = searchGenericFoods();
@@ -1139,46 +957,6 @@ function renderPendingFoodResult() {
           <div class="calculated-nutrition" id="pendingNutritionPreview"></div>
           <p class="pending-food-message" id="pendingFoodMessage" aria-live="polite"></p>
           <button class="primary-button full-button" type="button" data-pending-action="register">食べた！🍽️</button>
-        </div>
-      </article>
-    `;
-    renderPendingNutritionPreview();
-    return;
-  }
-
-  if (pendingFoodEntry.type === "barcode") {
-    const product = pendingFoodEntry.product;
-    const amount = Number(pendingFoodEntry.amount) || (product.basis === "gram" ? 100 : 1);
-    const amountUnit = product.basis === "gram" ? "g" : product.unit;
-    const amountLabel = product.basis === "gram" ? "食べた量" : "食べた数";
-    container.innerHTML = `
-      <article class="pending-food-card">
-        <div class="pending-food-head">
-          <div>
-            <span class="panel-label">実績登録</span>
-            <h3>${escapeHtml(barcodeDisplayName(product))}</h3>
-            <p>${escapeHtml([
-              product.quantityLabel ? `内容量 ${product.quantityLabel}` : "",
-              product.servingSizeLabel ? `1食 ${product.servingSizeLabel}` : product.amountLabelBase,
-            ].filter(Boolean).join(" / ") || "取得結果を確認してください。")}</p>
-          </div>
-          <button class="ghost-button pending-close-button" type="button" data-pending-action="clear">×</button>
-        </div>
-        <dl class="per-100-list">${perUnitNutritionList(product.amountLabelBase, product.nutrientsPerUnit)}</dl>
-        <div class="pending-food-form">
-          <div class="form-row">
-            <label for="pendingFoodAmount">${amountLabel}</label>
-            <div class="input-with-unit">
-              <input id="pendingFoodAmount" data-pending-input="amount" type="number" min="0.1" step="${product.basis === "gram" ? "1" : "0.5"}" inputmode="decimal" value="${escapeHtml(String(amount))}">
-              <span>${escapeHtml(amountUnit)}</span>
-            </div>
-          </div>
-          <div class="calculated-nutrition" id="pendingNutritionPreview"></div>
-          <p class="pending-food-message" id="pendingFoodMessage" aria-live="polite"></p>
-          <div class="pending-button-row">
-            <button class="primary-button" type="button" data-pending-action="register">食べた！🍽️</button>
-            <button class="ghost-button" type="button" data-pending-action="manual">手入力で補完</button>
-          </div>
         </div>
       </article>
     `;
@@ -1463,15 +1241,14 @@ function renderMasterFoodForm() {
 function renderManualPendingFood() {
   const container = document.querySelector("#pendingFoodResult");
   if (!container) return;
-  const barcodeLabel = pendingFoodEntry?.barcode ? `バーコード ${pendingFoodEntry.barcode}` : "手入力補完";
   const defaultName = pendingFoodEntry?.name || "";
   container.innerHTML = `
     <article class="pending-food-card manual-pending-card">
       <div class="pending-food-head">
         <div>
           <span class="panel-label">実績登録</span>
-          <h3>${escapeHtml(barcodeLabel)}</h3>
-          <p>kcalだけ必須。PFCは分かる範囲で補完できます。</p>
+          <h3>手入力</h3>
+          <p>kcalだけ必須。PFCは分かる範囲で入力できます。</p>
         </div>
         <button class="ghost-button pending-close-button" type="button" data-pending-action="clear">×</button>
       </div>
@@ -1518,11 +1295,6 @@ function renderPendingNutritionPreview() {
     const food = getFoodById(pendingFoodEntry.foodId);
     if (!food) return;
     container.innerHTML = nutritionPreviewMarkup(foodAmountLabel(food, amount), calculateFoodNutrients(food, amount));
-    return;
-  }
-  if (pendingFoodEntry.type === "barcode") {
-    const product = pendingFoodEntry.product;
-    container.innerHTML = nutritionPreviewMarkup(barcodeAmountLabel(product, amount), calculateBarcodeNutrients(product, amount));
   }
 }
 
@@ -1573,7 +1345,7 @@ function addMealLogFromHistory(id) {
 function setPendingGenericFood(foodId) {
   const food = getFoodById(foodId);
   if (!food) return;
-  pendingFoodEntry = { type: "generic", foodId: food.id, amountG: "" };
+  pendingFoodEntry = { type: "generic", foodId: food.id, amountG: defaultMasterBuilderAmount(food) };
   mealHistoryOpen = false;
   foodSearchStatus = food.unitMode === "serving"
     ? "食べた数を入力して、今日の摂取に登録できます。"
@@ -1585,11 +1357,10 @@ function setPendingGenericFood(foodId) {
 function showManualFoodEntry(context = {}) {
   pendingFoodEntry = {
     type: "manual",
-    barcode: context.barcode || "",
     name: context.name || "",
   };
   mealHistoryOpen = false;
-  foodSearchStatus = "kcalだけ必須です。PFCは分かる範囲で補完できます。";
+  foodSearchStatus = "kcalだけ必須です。PFCは分かる範囲で入力できます。";
   renderFood();
   document.querySelector("#pendingManualKcal")?.focus();
 }
@@ -1610,41 +1381,9 @@ async function performUnifiedFoodSearch() {
   const input = document.querySelector("#foodSearchInput");
   const rawQuery = (input?.value || foodSearchQuery).trim();
   foodSearchQuery = rawQuery;
-  const barcodeCandidate = rawQuery.replace(/\D/g, "");
-  const compactQuery = rawQuery.replace(/[\s-]/g, "");
   if (!rawQuery) {
-    foodSearchStatus = "食品名、カテゴリ、バーコード番号を入力してください。";
+    foodSearchStatus = "食品名やカテゴリを入力してください。";
     renderFood();
-    return;
-  }
-  if (barcodeCandidate.length >= 8 && barcodeCandidate === compactQuery) {
-    foodSearchStatus = "商品DBを検索しています。";
-    pendingFoodEntry = null;
-    renderFood();
-    try {
-      const product = await lookupBarcodeProduct(barcodeCandidate);
-      if (!product.found) {
-        foodSearchStatus = "商品が見つかりませんでした。kcalだけ入力して補完できます。";
-        showManualFoodEntry({ barcode: barcodeCandidate });
-        return;
-      }
-      if (!product.complete) {
-        foodSearchStatus = "商品名は取得できましたが、栄養値が不足しています。kcalだけ入力して補完できます。";
-        showManualFoodEntry({ barcode: barcodeCandidate, name: barcodeDisplayName(product) || product.name });
-        return;
-      }
-      pendingFoodEntry = {
-        type: "barcode",
-        product,
-        amount: product.basis === "gram" ? 100 : 1,
-      };
-      foodSearchStatus = "商品情報を取得しました。内容を確認して登録してください。";
-      renderFood();
-      document.querySelector("#pendingFoodAmount")?.focus();
-    } catch {
-      foodSearchStatus = "通信に失敗しました。kcalだけ入力して補完できます。";
-      showManualFoodEntry({ barcode: barcodeCandidate });
-    }
     return;
   }
 
@@ -1653,30 +1392,6 @@ async function performUnifiedFoodSearch() {
     ? "候補を選択すると、今日の摂取欄で量を入力できます。"
     : "該当する食品がありません。よく使う食品は食品登録から追加できます。";
   renderFood();
-}
-
-async function decodeBarcodeFromImage(file) {
-  if (!file) return { code: "", reason: "empty" };
-  if (!("BarcodeDetector" in window)) {
-    return { code: "", reason: "unsupported" };
-  }
-  let imageBitmap = null;
-  try {
-    let formats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"];
-    if (typeof BarcodeDetector.getSupportedFormats === "function") {
-      const supported = await BarcodeDetector.getSupportedFormats();
-      formats = formats.filter((format) => supported.includes(format));
-    }
-    const detector = formats.length ? new BarcodeDetector({ formats }) : new BarcodeDetector();
-    imageBitmap = await createImageBitmap(file);
-    const codes = await detector.detect(imageBitmap);
-    const code = codes?.[0]?.rawValue?.replace(/\D/g, "") || "";
-    return code ? { code, reason: "" } : { code: "", reason: "not_found" };
-  } catch {
-    return { code: "", reason: "failed" };
-  } finally {
-    imageBitmap?.close?.();
-  }
 }
 
 function registerPendingFood() {
@@ -1699,23 +1414,6 @@ function registerPendingFood() {
     });
     return;
   }
-  if (pendingFoodEntry.type === "barcode") {
-    const product = pendingFoodEntry.product;
-    const amount = Number(document.querySelector("#pendingFoodAmount")?.value);
-    if (!product?.complete || !Number.isFinite(amount) || amount <= 0) {
-      setPendingMessage("食べた量を入力してください。");
-      return;
-    }
-    addMealLog({
-      sourceType: "barcode",
-      foodId: `barcode:${product.code}`,
-      displayName: barcodeDisplayName(product),
-      category: "加工食品",
-      amountG: barcodeAmountG(product, amount),
-      amountLabel: barcodeAmountLabel(product, amount),
-      nutrientsSnapshot: calculateBarcodeNutrients(product, amount),
-    });
-  }
 }
 
 function registerManualFood() {
@@ -1727,10 +1425,10 @@ function registerManualFood() {
   }
   const name = document.querySelector("#pendingManualName")?.value.trim()
     || pendingFoodEntry.name
-    || (pendingFoodEntry.barcode ? `バーコード ${pendingFoodEntry.barcode}` : "手入力食品");
+    || "手入力食品";
   addMealLog({
-    sourceType: pendingFoodEntry.barcode ? "manual_barcode" : "manual",
-    foodId: pendingFoodEntry.barcode ? `barcode:${pendingFoodEntry.barcode}` : "",
+    sourceType: "manual",
+    foodId: "",
     displayName: name,
     category: "手入力",
     amountG: 0,
@@ -1822,7 +1520,7 @@ function renderRecordNutritionSummary() {
     carbsCard: "#recordCarbsCard",
     note: "#recordPfcNote",
   });
-  renderIntakeGuidance("#recordIntakeFloor", "#recordIntakeCeiling", "#recordIntakeNote", "#recordIntakeGauge", "#recordNutritionKcal");
+  renderIntakeGuidance("#recordIntakeCeiling", "#recordIntakeNote", "#recordIntakeGauge", "#recordNutritionKcal");
   renderMealLogList("#recordMealLogList", "#recordMealLogEmpty", true);
 }
 
@@ -1839,7 +1537,7 @@ function renderFoodTodaySummary() {
     carbsCard: "#foodCarbsCard",
     note: "#foodPfcNote",
   });
-  renderIntakeGuidance("#foodIntakeFloor", "#foodIntakeCeiling", "#foodIntakeNote", "#foodIntakeGauge", "#foodTodayKcal");
+  renderIntakeGuidance("#foodIntakeCeiling", "#foodIntakeNote", "#foodIntakeGauge", "#foodTodayKcal");
   renderMealLogList("#foodMealLogList", "#foodMealLogEmpty", true);
 }
 
@@ -1907,45 +1605,36 @@ function renderPfcGuidance(totals, selectors) {
   note.textContent = `PFCは目安範囲内です。P ${guidance.proteinMin}-${guidance.proteinMax}g / F 20-30% / C 35-55% を基準にしています。`;
 }
 
-function renderIntakeGuidance(floorSelector, ceilingSelector, noteSelector, gaugeSelector, totalSelector) {
+function renderIntakeGuidance(ceilingSelector, noteSelector, gaugeSelector, totalSelector) {
   const guidance = intakeGuidance(selectedDate);
   const totalCard = document.querySelector(totalSelector)?.closest(".intake-total-card");
   totalCard?.classList.remove("warn", "danger");
   if (!guidance) {
-    setText(floorSelector, "-- kcal");
     setText(ceilingSelector, "-- kcal");
-    setText(noteSelector, "基礎代謝、生活消費、目標カロリー差から食事の目安を表示します。");
+    setText(noteSelector, "基礎代謝、生活消費、目標カロリー差から食事の上限目安を表示します。");
     renderIntakeGauge(gaugeSelector, null);
     return;
   }
-  setText(floorSelector, `${guidance.lower} kcal`);
   setText(ceilingSelector, guidance.targetConflict ? "要見直し" : `${guidance.upper} kcal`);
   renderIntakeGauge(gaugeSelector, guidance);
   const note = document.querySelector(noteSelector);
   if (!note) return;
   note.classList.remove("warn", "danger");
-  const conflictMessage = "最低摂取量を守ると、今日の目標カロリー差には届きません。運動を増やすか、目標体重・期限を見直してください。";
+  const conflictMessage = "今日の目標カロリー差が大きく、食事量だけでは調整しきれません。運動量を増やすか、目標体重・期限を見直してください。";
   if (!guidance.hasFoodLog) {
     if (guidance.targetConflict) {
       note.classList.add("danger");
-      note.textContent = `${conflictMessage} 最低摂取量で確保できるカロリー差は${guidance.minimumDeficit}kcal、目標は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`;
+      totalCard?.classList.add("danger");
+      note.textContent = `${conflictMessage} 今日の見込み消費は${guidance.availableBurn}kcal、目標カロリー差は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`;
       return;
     }
-    note.textContent = `下限は基礎代謝${guidance.lower}kcalです。上限は基礎代謝に保守的な生活消費${guidance.lifestyleCredit}kcalと運動反映分${guidance.exerciseCredit}kcalを足し、目標カロリー差${guidance.required}kcalを差し引いた${guidance.upper}kcalを目安にします。`;
-    return;
-  }
-  if (guidance.intake < guidance.lower) {
-    note.classList.add("danger");
-    totalCard?.classList.add("danger");
-    note.textContent = guidance.targetConflict
-      ? `摂取が基礎代謝 ${guidance.lower}kcal を下回っています。まずは下限を満たしてください。なお、${conflictMessage} 生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`
-      : `摂取が基礎代謝 ${guidance.lower}kcal を下回っています。食事量が少なすぎるため、まずは下限を満たしてください。`;
+    note.textContent = `上限は基礎代謝に保守的な生活消費${guidance.lifestyleCredit}kcalと運動反映分${guidance.exerciseCredit}kcalを足し、目標カロリー差${guidance.required}kcalを差し引いた${guidance.upper}kcalを目安にします。`;
     return;
   }
   if (guidance.targetConflict) {
     note.classList.add("danger");
     totalCard?.classList.add("danger");
-    note.textContent = `${conflictMessage} 最低摂取量で確保できるカロリー差は${guidance.minimumDeficit}kcal、目標は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`;
+    note.textContent = `${conflictMessage} 今日の見込み消費は${guidance.availableBurn}kcal、目標カロリー差は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`;
     return;
   }
   if (guidance.intake > guidance.upper) {
@@ -1954,7 +1643,7 @@ function renderIntakeGuidance(floorSelector, ceilingSelector, noteSelector, gaug
     note.textContent = `摂取が上限目安 ${guidance.upper}kcal を ${guidance.intake - guidance.upper}kcal 上回っています。上限には保守的な生活消費${guidance.lifestyleCredit}kcalと運動消費の75%を反映しています。`;
     return;
   }
-  note.textContent = `基礎代謝 ${guidance.lower}kcal は下回らず、上限目安 ${guidance.upper}kcal に収まっています。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もり、目標カロリー差は1日約${guidance.required}kcalです。`;
+  note.textContent = `上限目安 ${guidance.upper}kcal に収まっています。実績カロリー差は${guidance.actualDeficit}kcal、目標は1日約${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`;
 }
 
 function renderIntakeGauge(selector, guidance) {
@@ -1964,20 +1653,16 @@ function renderIntakeGauge(selector, guidance) {
   if (!guidance) {
     gauge.classList.add("empty");
     gauge.style.setProperty("--intake-pct", "0%");
-    gauge.style.setProperty("--lower-pct", "0%");
     gauge.style.setProperty("--upper-pct", "0%");
     return;
   }
-  const max = Math.max(Math.max(guidance.upper, 0) * 1.18, guidance.lower * 1.18, guidance.intake, 1);
+  const max = Math.max(Math.max(guidance.upper, 0) * 1.18, guidance.intake, 1);
   const intakePct = Math.min(100, Math.round((guidance.intake / max) * 1000) / 10);
-  const lowerPct = Math.min(100, Math.round((guidance.lower / max) * 1000) / 10);
   const upperPct = Math.min(100, Math.round((Math.max(guidance.upper, 0) / max) * 1000) / 10);
   gauge.style.setProperty("--intake-pct", `${intakePct}%`);
-  gauge.style.setProperty("--lower-pct", `${lowerPct}%`);
   gauge.style.setProperty("--upper-pct", `${upperPct}%`);
-  gauge.classList.toggle("overlap", Math.abs(upperPct - lowerPct) < 1);
   gauge.classList.toggle("no-upper", guidance.targetConflict);
-  if (guidance.targetConflict || (guidance.hasFoodLog && (guidance.intake < guidance.lower || guidance.intake > guidance.upper))) {
+  if (guidance.targetConflict || (guidance.hasFoodLog && guidance.intake > guidance.upper)) {
     gauge.classList.add("danger");
   }
 }
@@ -1988,10 +1673,6 @@ function mealSourceLabel(entry) {
       return "登録食品";
     case "generic":
       return "食品マスタ";
-    case "barcode":
-      return "バーコード";
-    case "manual_barcode":
-      return "バーコード補完";
     case "manual":
       return "手入力";
     default:
@@ -2202,17 +1883,69 @@ function renderRoundTimer() {
   }
   updateInputValue("#timerPreset", settings.presetId);
   updateInputValue("#timerPrepSec", settings.prepSec);
-  updateInputValue("#timerWorkSec", round2(settings.workSec / 60));
+  updateInputValue("#timerWorkMin", Math.floor(settings.workSec / 60));
+  updateInputValue("#timerWorkSec", String(settings.workSec % 60).padStart(2, "0"));
   updateInputValue("#timerRestSec", settings.restSec);
   updateInputValue("#timerRounds", settings.rounds);
-  updateTimerPresetNameFromSelection();
+  updateTimerWheelAria(settings);
   syncWakeLock();
 }
 
 function updateInputValue(selector, value) {
   const input = document.querySelector(selector);
   if (!input || document.activeElement === input) return;
-  input.value = String(value);
+  if ("value" in input) input.value = String(value);
+  else input.textContent = String(value);
+}
+
+function updateTimerWheelAria(settings = currentRoundTimer()) {
+  const values = {
+    prepSec: settings.prepSec,
+    workMin: Math.floor(settings.workSec / 60),
+    workSec: settings.workSec % 60,
+    restSec: settings.restSec,
+    rounds: settings.rounds,
+  };
+  document.querySelectorAll("[data-timer-wheel]").forEach((wheel) => {
+    const key = wheel.dataset.timerWheel;
+    const windowEl = wheel.querySelector(".timer-wheel-window");
+    if (!windowEl || !(key in values)) return;
+    windowEl.setAttribute("aria-valuenow", String(values[key]));
+    windowEl.setAttribute("aria-valuetext", key === "workSec" ? `${values[key]}秒` : windowEl.textContent.trim());
+  });
+}
+
+function timerWheelNextSettings(key, direction) {
+  const current = currentRoundTimer();
+  const next = { ...current };
+  const dir = direction > 0 ? 1 : -1;
+  if (key === "prepSec") next.prepSec = clampInt(current.prepSec + (dir * 5), 0, 600, current.prepSec);
+  if (key === "restSec") next.restSec = clampInt(current.restSec + (dir * 5), 0, 1800, current.restSec);
+  if (key === "rounds") next.rounds = clampInt(current.rounds + dir, 1, 99, current.rounds);
+  if (key === "workMin" || key === "workSec") {
+    let minutes = Math.floor(current.workSec / 60);
+    let seconds = current.workSec % 60;
+    if (key === "workMin") minutes = clampInt(minutes + dir, 0, 60, minutes);
+    if (key === "workSec") seconds = clampInt(seconds + (dir * 5), 0, 55, seconds);
+    next.workSec = clampInt((minutes * 60) + seconds, 1, 3600, current.workSec);
+  }
+  next.presetId = matchRoundTimerPreset(next);
+  return next;
+}
+
+function changeTimerWheelValue(key, direction) {
+  const current = currentRoundTimer();
+  const next = timerWheelNextSettings(key, direction);
+  if (
+    next.prepSec === current.prepSec
+    && next.workSec === current.workSec
+    && next.restSec === current.restSec
+    && next.rounds === current.rounds
+  ) {
+    return;
+  }
+  playTick();
+  saveRoundTimerSettings(next);
 }
 
 function matchRoundTimerPreset(settings) {
@@ -2224,13 +1957,7 @@ function matchRoundTimerPreset(settings) {
     && item.rounds === settings.rounds
   ));
   if (preset) return preset.id;
-  const savedPreset = currentRoundTimer().savedPresets.find((item) => (
-    item.prepSec === settings.prepSec
-    && item.workSec === settings.workSec
-    && item.restSec === settings.restSec
-    && item.rounds === settings.rounds
-  ));
-  return savedPreset ? `${SAVED_TIMER_PRESET_PREFIX}${savedPreset.id}` : CUSTOM_TIMER_PRESET_ID;
+  return CUSTOM_TIMER_PRESET_ID;
 }
 
 function saveRoundTimerSettings(nextSettings, options = {}) {
@@ -2243,21 +1970,16 @@ function saveRoundTimerSettings(nextSettings, options = {}) {
 
 function roundTimerPresetOptionsHtml(settings = currentRoundTimer()) {
   const builtInOptions = ROUND_TIMER_PRESETS
+    .filter((preset) => preset.id !== CUSTOM_TIMER_PRESET_ID)
     .map((preset) => `<option value="${preset.id}">${escapeHtml(preset.name)}</option>`)
     .join("");
-  const savedOptions = settings.savedPresets
-    .map((preset) => `<option value="${SAVED_TIMER_PRESET_PREFIX}${preset.id}">${escapeHtml(preset.name)}</option>`)
-    .join("");
-  return savedOptions
-    ? `<optgroup label="基本">${builtInOptions}</optgroup><optgroup label="保存済み">${savedOptions}</optgroup>`
-    : builtInOptions;
+  const customOption = settings.presetId === CUSTOM_TIMER_PRESET_ID
+    ? `<option value="${CUSTOM_TIMER_PRESET_ID}">カスタム</option>`
+    : "";
+  return `${builtInOptions}${customOption}`;
 }
 
 function roundTimerPresetById(value) {
-  if (value?.startsWith(SAVED_TIMER_PRESET_PREFIX)) {
-    const savedId = value.slice(SAVED_TIMER_PRESET_PREFIX.length);
-    return currentRoundTimer().savedPresets.find((preset) => preset.id === savedId) || null;
-  }
   return ROUND_TIMER_PRESETS.find((preset) => preset.id === value) || null;
 }
 
@@ -2274,61 +1996,6 @@ function applySelectedRoundTimerPreset() {
     rounds: preset.rounds,
   });
   showTimerFeedback(`${preset.name} を反映しました。`);
-}
-
-function updateTimerPresetNameFromSelection() {
-  const nameInput = document.querySelector("#timerPresetName");
-  const presetSelect = document.querySelector("#timerPreset");
-  if (!nameInput || !presetSelect || document.activeElement === nameInput) return;
-  const preset = roundTimerPresetById(presetSelect.value);
-  nameInput.value = presetSelect.value?.startsWith(SAVED_TIMER_PRESET_PREFIX) && preset ? preset.name : "";
-}
-
-function saveCurrentRoundTimerPreset() {
-  const settings = currentRoundTimer();
-  const nameInput = document.querySelector("#timerPresetName");
-  const selected = document.querySelector("#timerPreset")?.value || "";
-  const name = nameInput?.value.trim() || `${formatTimerDuration(settings.workSec)} × ${settings.rounds}R`;
-  const existingId = selected.startsWith(SAVED_TIMER_PRESET_PREFIX)
-    ? selected.slice(SAVED_TIMER_PRESET_PREFIX.length)
-    : null;
-  const presetId = existingId || `${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
-  const nextPreset = {
-    id: presetId,
-    name,
-    prepSec: settings.prepSec,
-    workSec: settings.workSec,
-    restSec: settings.restSec,
-    rounds: settings.rounds,
-  };
-  const savedPresets = [
-    nextPreset,
-    ...settings.savedPresets.filter((preset) => preset.id !== presetId),
-  ].slice(0, 20);
-  saveRoundTimerSettings({
-    ...settings,
-    presetId: `${SAVED_TIMER_PRESET_PREFIX}${presetId}`,
-    savedPresets,
-  }, { reset: false });
-  showTimerFeedback(`${name} を保存しました。`);
-}
-
-function deleteSelectedRoundTimerPreset() {
-  const selected = document.querySelector("#timerPreset")?.value || "";
-  if (!selected.startsWith(SAVED_TIMER_PRESET_PREFIX)) {
-    showTimerFeedback("保存済み設定だけ削除できます。");
-    return;
-  }
-  const settings = currentRoundTimer();
-  const presetId = selected.slice(SAVED_TIMER_PRESET_PREFIX.length);
-  const target = settings.savedPresets.find((preset) => preset.id === presetId);
-  const savedPresets = settings.savedPresets.filter((preset) => preset.id !== presetId);
-  saveRoundTimerSettings({
-    ...settings,
-    presetId: CUSTOM_TIMER_PRESET_ID,
-    savedPresets,
-  }, { reset: false });
-  showTimerFeedback(`${target?.name || "保存済み設定"} を削除しました。`);
 }
 
 function showTimerFeedback(message) {
@@ -2488,6 +2155,29 @@ function playClick() {
     gain.connect(ctx.destination);
     osc.start(now);
     osc.stop(now + 0.1);
+  } catch {
+    // best-effort
+  }
+}
+
+function playTick() {
+  try {
+    timerAudioContext = timerAudioContext || new (window.AudioContext || window.webkitAudioContext)();
+    if (timerAudioContext.state === "suspended") timerAudioContext.resume();
+    const ctx = timerAudioContext;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(980, now);
+    osc.frequency.exponentialRampToValueAtTime(620, now + 0.025);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.05);
   } catch {
     // best-effort
   }
@@ -2676,7 +2366,7 @@ function goalSafety(heightCm, goalKg, goalDateIso) {
     messages.push(`目標 ${round1(goalKg)}kg は BMI ${goalBmi.toFixed(1)} でまだ肥満域です。${healthyHigh}kg 以下（BMI25未満）を目指すとより健康的です。`);
   }
   const baseWeight = currentBodyWeightKg();
-  const referenceDate = latestTrend()?.date || latestEntry()?.date || todayIso();
+  const referenceDate = latestEntry()?.date || todayIso();
   const daysLeft = goalDateIso ? daysBetween(referenceDate, goalDateIso) : 0;
   if (daysLeft > 0 && baseWeight > goalKg) {
     const pace = ((baseWeight - goalKg) / daysLeft) * 7;
@@ -2891,7 +2581,6 @@ function scoreFromCheck(check) {
 function currentUiScore() {
   const guidance = intakeGuidance(selectedDate);
   if (!guidance || !guidance.hasFoodLog || guidance.required <= 0) return 0;
-  if (guidance.intake < guidance.lower) return 0;
   const ratio = guidance.actualDeficit / guidance.required;
   return Math.max(0, Math.min(100, Math.round(ratio * 100)));
 }
@@ -2912,45 +2601,38 @@ function decisionClass(status) {
 function dailyDecision(date) {
   const guidance = intakeGuidance(date);
   if (!guidance) {
-    return { status: "fail", label: "不合格", short: "否", reason: "目標体重か期限が未設定です。", guidance: null };
+    return { status: "fail", label: "✕", short: "✕", reason: "目標体重か期限が未設定です。", guidance: null };
   }
   if (!guidance.hasFoodLog) {
-    return { status: "fail", label: "不合格", short: "否", reason: "食事実績が未登録です。", guidance };
-  }
-  if (guidance.intake < guidance.lower) {
-    return { status: "fail", label: "不合格", short: "否", reason: `基礎代謝 ${guidance.lower}kcal を下回っています。`, guidance };
+    return { status: "fail", label: "✕", short: "✕", reason: "食事実績が未登録です。", guidance };
   }
   if (guidance.targetConflict) {
-    return { status: "fail", label: "不合格", short: "否", reason: "最低摂取量を守ると、今日の目標カロリー差には届きません。", guidance };
+    return { status: "fail", label: "✕", short: "✕", reason: "今日の目標カロリー差が大きく、食事量だけでは調整しきれません。", guidance };
   }
-  if (guidance.intake <= guidance.upper) {
-    return { status: "pass", label: "合格", short: "合", reason: `目標カロリー差 ${guidance.required}kcal を達成しています。`, guidance };
+  if (guidance.actualDeficit >= guidance.required) {
+    return { status: "pass", label: "〇", short: "〇", reason: `目標カロリー差 ${guidance.required}kcal を達成しています。`, guidance };
   }
-  return { status: "fail", label: "不合格", short: "否", reason: `上限目安を ${guidance.intake - guidance.upper}kcal 上回っています。`, guidance };
+  return { status: "fail", label: "✕", short: "✕", reason: `目標カロリー差に ${guidance.required - guidance.actualDeficit}kcal 届いていません。`, guidance };
 }
 
 function weeklyDecisionSummary(results, recordedDays) {
   if (!recordedDays) {
-    return { status: "fail", label: "不合格", short: "否", reason: "まだ評価対象の記録がありません。" };
+    return { status: "fail", label: "✕", short: "✕", reason: "まだ評価対象の記録がありません。" };
   }
   const recordedFoodDays = results.filter((entry) => entry.guidance?.hasFoodLog).length;
   const targetConflictDays = results.filter((entry) => entry.guidance?.hasFoodLog && entry.guidance.targetConflict).length;
-  const underMinimumDays = results.filter((entry) => entry.guidance?.hasFoodLog && entry.guidance.intake < entry.guidance.lower).length;
   const totalRequired = results.reduce((sum, entry) => sum + (entry.guidance?.required || 0), 0);
   const totalActual = results.reduce((sum, entry) => sum + (entry.guidance?.hasFoodLog ? (entry.guidance?.actualDeficit || 0) : 0), 0);
   if (recordedFoodDays < 4) {
-    return { status: "fail", label: "不合格", short: "否", reason: "食事記録が4日未満のため、週間判定は不合格です。" };
-  }
-  if (underMinimumDays) {
-    return { status: "fail", label: "不合格", short: "否", reason: `基礎代謝を下回った日が${underMinimumDays}日あります。まずは最低摂取量を守ってください。` };
+    return { status: "fail", label: "✕", short: "✕", reason: "食事記録が4日未満のため、週間判定は未達です。" };
   }
   if (targetConflictDays) {
-    return { status: "fail", label: "不合格", short: "否", reason: `最低摂取量と目標カロリー差が両立しない日が${targetConflictDays}日あります。運動量、目標体重、期限を見直してください。` };
+    return { status: "fail", label: "✕", short: "✕", reason: `食事量だけでは目標カロリー差に届きにくい日が${targetConflictDays}日あります。運動量、目標体重、期限を見直してください。` };
   }
   if (totalActual >= totalRequired) {
-    return { status: "pass", label: "合格", short: "合", reason: "7日合計で目標カロリー差を達成しています。" };
+    return { status: "pass", label: "〇", short: "〇", reason: "7日合計で目標カロリー差を達成しています。" };
   }
-  return { status: "fail", label: "不合格", short: "否", reason: `7日合計で目標カロリー差に ${totalRequired - totalActual}kcal 届いていません。` };
+  return { status: "fail", label: "✕", short: "✕", reason: `7日合計で目標カロリー差に ${totalRequired - totalActual}kcal 届いていません。` };
 }
 
 function setDecisionStamp(element, decision) {
@@ -3167,7 +2849,7 @@ function buildWorkoutPlan() {
 }
 
 function currentBodyWeightKg() {
-  return latestTrend()?.trendKg || latestEntry()?.weightKg || state.settings.startWeightKg || 78;
+  return latestEntry()?.weightKg || state.settings.startWeightKg || 78;
 }
 
 function estimateWorkoutKcal(type, level) {
@@ -3446,6 +3128,10 @@ function setCollapseState(sectionId, collapsed) {
   button.closest(".collapsible-section")?.classList.toggle("is-collapsed", collapsed);
 }
 
+function shouldIgnoreCollapseClick(target) {
+  return Boolean(target.closest("button, input, select, textarea, a, label, [data-no-collapse-toggle]"));
+}
+
 function setSettingsOpen(open) {
   const overlay = document.querySelector("#settingsOverlay");
   if (!overlay) return;
@@ -3475,6 +3161,16 @@ function bindEvents() {
   document.querySelectorAll("[data-collapse-toggle]").forEach((button) => {
     setCollapseState(button.dataset.collapseToggle, button.getAttribute("aria-expanded") !== "true");
     button.addEventListener("click", () => {
+      const expanded = button.getAttribute("aria-expanded") === "true";
+      setCollapseState(button.dataset.collapseToggle, expanded);
+    });
+  });
+
+  document.querySelectorAll(".collapsible-section").forEach((section) => {
+    section.addEventListener("click", (event) => {
+      if (shouldIgnoreCollapseClick(event.target)) return;
+      const button = section.querySelector("[data-collapse-toggle]");
+      if (!button) return;
       const expanded = button.getAttribute("aria-expanded") === "true";
       setCollapseState(button.dataset.collapseToggle, expanded);
     });
@@ -3568,7 +3264,7 @@ function bindEvents() {
       : null;
     const goalKg = Number(document.querySelector("#goalWeight").value);
     const goalDate = document.querySelector("#goalDate").value;
-    const referenceDate = latestTrend()?.date || latestEntry()?.date || todayIso();
+    const referenceDate = latestEntry()?.date || todayIso();
     const daysLeft = goalDate ? daysBetween(referenceDate, goalDate) : 0;
     const dailyDeficit = daysLeft > 0 && previewWeight > goalKg ? Math.round(((previewWeight - goalKg) * 7200) / daysLeft) : null;
     setText("#bmrValue", bmr ? `${bmr} kcal` : "-- kcal");
@@ -3583,7 +3279,7 @@ function bindEvents() {
 
   document.querySelector("#weightInput").addEventListener("input", syncWeightInputFormatting);
 
-  document.querySelector("#openFoodView").addEventListener("click", () => {
+  document.querySelector("#openFoodView")?.addEventListener("click", () => {
     activateView("food");
     document.querySelector("#foodSearchInput")?.focus();
   });
@@ -3595,11 +3291,7 @@ function bindEvents() {
 
   document.querySelector("#foodSearchInput").addEventListener("input", (event) => {
     foodSearchQuery = event.target.value;
-    const barcodeCandidate = foodSearchQuery.trim().replace(/\D/g, "");
-    const compactQuery = foodSearchQuery.trim().replace(/[\s-]/g, "");
-    foodSearchStatus = barcodeCandidate.length >= 8 && barcodeCandidate === compactQuery
-      ? "検索ボタンで商品DBを確認します。"
-      : "候補を選択すると、今日の摂取欄で量を入力できます。";
+    foodSearchStatus = "候補を選択すると、今日の摂取欄で量を入力できます。";
     renderFoodSearch();
   });
 
@@ -3609,39 +3301,10 @@ function bindEvents() {
     setPendingGenericFood(button.dataset.foodId);
   });
 
-  document.querySelector("#scanBarcodeButton").addEventListener("click", () => {
-    document.querySelector("#barcodeImageInput")?.click();
-  });
-
-  document.querySelector("#barcodeImageInput").addEventListener("change", async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    foodSearchStatus = "画像からバーコードを読み取っています。";
-    renderFoodSearch();
-    const result = await decodeBarcodeFromImage(file);
-    event.target.value = "";
-    if (!result.code) {
-      if (result.reason === "unsupported") {
-        foodSearchStatus = "このブラウザでは画像からの自動読取に未対応です。バーコード番号を入力して検索できます。";
-      } else if (result.reason === "not_found") {
-        foodSearchStatus = "画像からバーコードを読み取れませんでした。番号入力で検索できます。";
-      } else {
-        foodSearchStatus = "バーコード読取に失敗しました。番号入力で検索できます。";
-      }
-      renderFoodSearch();
-      return;
-    }
-    const input = document.querySelector("#foodSearchInput");
-    if (input) input.value = result.code;
-    foodSearchQuery = result.code;
-    await performUnifiedFoodSearch();
-  });
-
   document.querySelector("#pendingFoodResult").addEventListener("input", (event) => {
     if (event.target.matches("[data-pending-input='amount']") && pendingFoodEntry) {
       const value = event.target.value;
       if (pendingFoodEntry.type === "generic") pendingFoodEntry.amountG = value === "" ? "" : Number(value) || 0;
-      if (pendingFoodEntry.type === "barcode") pendingFoodEntry.amount = value === "" ? "" : Number(value) || 0;
       renderPendingNutritionPreview();
     }
   });
@@ -3664,13 +3327,6 @@ function bindEvents() {
     if (button.dataset.pendingAction === "register") {
       registerPendingFood();
       return;
-    }
-    if (button.dataset.pendingAction === "manual") {
-      const product = pendingFoodEntry?.product;
-      showManualFoodEntry({
-        barcode: product?.code || "",
-        name: product ? barcodeDisplayName(product) : "",
-      });
     }
   });
 
@@ -3854,48 +3510,75 @@ function bindEvents() {
     if (event.target.id === "timerSettingsModal") setTimerSettingsOpen(false);
   });
 
-  document.querySelector("#timerPreset").addEventListener("change", updateTimerPresetNameFromSelection);
-
-  document.querySelector("#applyTimerPreset").addEventListener("click", applySelectedRoundTimerPreset);
-
-  document.querySelector("#saveTimerPreset").addEventListener("click", () => {
-    saveCurrentRoundTimerPreset();
+  document.querySelector("#timerPreset").addEventListener("change", () => {
+    playTick();
+    applySelectedRoundTimerPreset();
   });
 
-  document.querySelector("#deleteTimerPreset").addEventListener("click", () => {
-    deleteSelectedRoundTimerPreset();
+  let timerWheelPointer = null;
+  document.querySelector("#timerSettingsModal").addEventListener("click", (event) => {
+    const stepButton = event.target.closest("[data-timer-wheel-step]");
+    if (!stepButton) return;
+    const wheel = stepButton.closest("[data-timer-wheel]");
+    if (!wheel) return;
+    changeTimerWheelValue(wheel.dataset.timerWheel, Number(stepButton.dataset.timerWheelStep));
   });
 
-  document.querySelectorAll("[data-timer-setting]").forEach((input) => {
-    const updateTimerSetting = () => {
-      const current = currentRoundTimer();
-      const next = {
-        ...current,
-        [input.dataset.timerSetting]: Number(input.value),
-      };
-      next.presetId = matchRoundTimerPreset(normalizeRoundTimer(next));
-      saveRoundTimerSettings(next);
+  document.querySelector("#timerSettingsModal").addEventListener("pointerdown", (event) => {
+    const target = event.target.closest(".timer-wheel-window");
+    if (!target) return;
+    const wheel = target.closest("[data-timer-wheel]");
+    if (!wheel) return;
+    timerWheelPointer = {
+      pointerId: event.pointerId,
+      key: wheel.dataset.timerWheel,
+      x: event.clientX,
+      y: event.clientY,
     };
-    input.addEventListener("input", updateTimerSetting);
-    input.addEventListener("change", updateTimerSetting);
+    target.setPointerCapture?.(event.pointerId);
   });
 
-  document.querySelectorAll("[data-timer-setting-min]").forEach((input) => {
-    const updateTimerSettingMin = () => {
-      const next = {
-        ...currentRoundTimer(),
-        [input.dataset.timerSettingMin]: Math.round(Number(input.value) * 60),
-      };
-      next.presetId = matchRoundTimerPreset(normalizeRoundTimer(next));
-      saveRoundTimerSettings(next);
-    };
-    input.addEventListener("input", updateTimerSettingMin);
-    input.addEventListener("change", updateTimerSettingMin);
+  document.querySelector("#timerSettingsModal").addEventListener("pointerup", (event) => {
+    if (!timerWheelPointer || timerWheelPointer.pointerId !== event.pointerId) return;
+    const dx = event.clientX - timerWheelPointer.x;
+    const dy = event.clientY - timerWheelPointer.y;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    if (Math.max(absX, absY) >= 14) {
+      const direction = absY >= absX ? (dy < 0 ? 1 : -1) : (dx < 0 ? 1 : -1);
+      changeTimerWheelValue(timerWheelPointer.key, direction);
+    }
+    timerWheelPointer = null;
+  });
+
+  document.querySelector("#timerSettingsModal").addEventListener("pointercancel", () => {
+    timerWheelPointer = null;
+  });
+
+  document.querySelector("#timerSettingsModal").addEventListener("keydown", (event) => {
+    const target = event.target.closest(".timer-wheel-window");
+    if (!target) return;
+    const wheel = target.closest("[data-timer-wheel]");
+    if (!wheel) return;
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown" && event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const direction = event.key === "ArrowUp" || event.key === "ArrowRight" ? 1 : -1;
+    changeTimerWheelValue(wheel.dataset.timerWheel, direction);
+  });
+
+  document.querySelectorAll(".timer-wheel-window").forEach((windowEl) => {
+    windowEl.addEventListener("wheel", (event) => {
+      const wheel = windowEl.closest("[data-timer-wheel]");
+      if (!wheel) return;
+      event.preventDefault();
+      changeTimerWheelValue(wheel.dataset.timerWheel, event.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
   });
 
   document.querySelector("#exerciseSegment").addEventListener("click", (event) => {
     const button = event.target.closest("[data-exercise]");
     if (!button) return;
+    playTick();
     setExerciseSegment(button.dataset.exercise === "true");
     updateFoodBurner();
     if (button.dataset.exercise === "true") launchFoodBurn();
@@ -3937,7 +3620,7 @@ function updateFoodBurner() {
   const burner = document.querySelector("#fatBurner");
   if (!burner) return;
   const score = currentUiScore();
-  const level = score === 0 ? 0 : Math.min(10, Math.ceil(score / 10));
+  const level = score === 0 ? 0 : Math.min(20, Math.ceil(score / 5));
   burner.className = `fat-burner heat-${level}`;
   const text = document.querySelector("#fatBurnText");
   if (!text) return;
@@ -3945,33 +3628,22 @@ function updateFoodBurner() {
     text.textContent = "目標体重と期限を設定すると、今日必要なカロリー差を計算します。まずは設定を確認してください。";
     return;
   }
-  const conflictMessage = "最低摂取量を守ると、今日の目標カロリー差には届きません。運動を増やすか、目標体重・期限を見直してください。";
+  const conflictMessage = "今日の目標カロリー差が大きく、食事量だけでは調整しきれません。運動量を増やすか、目標体重・期限を見直してください。";
   if (!guidance.hasFoodLog) {
     text.textContent = guidance.targetConflict
-      ? `${conflictMessage} 最低摂取量で確保できるカロリー差は${guidance.minimumDeficit}kcal、目標は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`
+      ? `${conflictMessage} 今日の見込み消費は${guidance.availableBurn}kcal、目標は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`
       : `今日の目標カロリー差は約${guidance.required}kcalです。食事実績がまだないため、判定は行いません。食事を登録すると現在の進捗を確認できます。`;
     return;
   }
-  const decision = dailyDecision(selectedDate);
-  if (guidance.intake < guidance.lower) {
-    text.textContent = guidance.targetConflict
-      ? `今日の摂取は${guidance.intake}kcalです。基礎代謝の目安 ${guidance.lower}kcal を下回っています。まずは下限まで補ってください。なお、${conflictMessage} 生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`
-      : `今日の摂取は${guidance.intake}kcalです。基礎代謝の目安 ${guidance.lower}kcal を下回っているため、食事量が少なすぎます。まずは下限まで補ってください。`;
-    return;
-  }
   if (guidance.targetConflict) {
-    text.textContent = `${conflictMessage} 最低摂取量で確保できるカロリー差は${guidance.minimumDeficit}kcal、目標は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`;
+    text.textContent = `${conflictMessage} 今日の見込み消費は${guidance.availableBurn}kcal、目標は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`;
     return;
   }
-  if (guidance.intake > guidance.upper) {
-    text.textContent = `今日の摂取は${guidance.intake}kcalです。上限目安 ${guidance.upper}kcal を ${guidance.intake - guidance.upper}kcal 上回っています。次の食事は軽めにするか、運動量を増やして調整してください。`;
+  if (guidance.actualDeficit >= guidance.required) {
+    text.textContent = `今日の摂取は${guidance.intake}kcalです。実績カロリー差は${guidance.actualDeficit}kcalで、目標の${guidance.required}kcalを達成しています。`;
     return;
   }
-  if (decision.status === "pass") {
-    text.textContent = `今日の摂取は${guidance.intake}kcalで、目安範囲内です。実績カロリー差は${guidance.actualDeficit}kcal、目標は${guidance.required}kcalです。生活消費は保守的に${guidance.lifestyleCredit}kcalで見積もっています。`;
-    return;
-  }
-  text.textContent = `今日の摂取は${guidance.intake}kcalで、食事量は目安範囲内です。ただし実績カロリー差は${guidance.actualDeficit}kcalで、目標の${guidance.required}kcalに届いていません。運動を追加するか、以降の食事量を調整してください。`;
+  text.textContent = `今日の摂取は${guidance.intake}kcalです。実績カロリー差は${guidance.actualDeficit}kcalで、目標まであと${guidance.required - guidance.actualDeficit}kcalです。運動を追加するか、以降の食事量を調整してください。`;
 }
 
 function launchFoodBurn() {

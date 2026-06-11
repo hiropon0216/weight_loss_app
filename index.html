@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=104">
+  <link rel="stylesheet" href="./styles.css?v=109">
 </head>
 <body>
   <div id="app">
@@ -25,9 +25,9 @@
         </div>
         <div class="hero-panel game-panel">
           <div>
-            <p class="panel-label">TREND WEIGHT</p>
+            <p class="panel-label">MEASURED WEIGHT</p>
             <div class="hero-number"><span id="trendWeight">--.-</span><span>kg</span></div>
-            <p class="muted" id="trendCaption">朝の体重を入力すると、ぶれをならして表示します。</p>
+            <p class="muted" id="trendCaption">選択日の実測体重を表示します。</p>
           </div>
           <div class="ring" aria-label="目標進捗">
             <svg viewBox="0 0 120 120" role="img">
@@ -49,7 +49,7 @@
           </article>
           <article>
             <span>日次判定</span>
-            <strong class="decision-stamp decision-fail small" id="dailyRank">不合格</strong>
+          <strong class="decision-stamp decision-fail small" id="dailyRank">✕</strong>
           </article>
         </div>
 
@@ -116,7 +116,6 @@
               <p>今日食べたものの摂取量を合計します。</p>
             </div>
             <div class="section-head-actions">
-              <button class="ghost-button compact-button" id="openFoodView" type="button">食事を追加</button>
               <button class="collapse-toggle" type="button" data-collapse-toggle="recordFoodCollapse" aria-label="食事実績を開く" aria-expanded="false">⌄</button>
             </div>
           </div>
@@ -142,24 +141,18 @@
             <p class="pfc-guidance-note" id="recordPfcNote">PFCバランスは食事登録後に表示します。</p>
             <div class="intake-guidance-grid">
               <article>
-                <span>下限目安</span>
-                <strong id="recordIntakeFloor">0 kcal</strong>
-              </article>
-              <article>
                 <span>上限目安</span>
                 <strong id="recordIntakeCeiling">0 kcal</strong>
               </article>
             </div>
             <div class="intake-gauge" id="recordIntakeGauge" aria-label="摂取kcalゲージ">
               <span class="intake-gauge-fill"></span>
-              <span class="intake-gauge-line lower" data-label="下限"></span>
               <span class="intake-gauge-line upper" data-label="上限"></span>
             </div>
             <div class="intake-gauge-legend" aria-label="摂取kcalゲージの凡例">
-              <span><i class="legend-dot lower"></i>下限</span>
               <span><i class="legend-dot upper"></i>上限</span>
             </div>
-            <p class="intake-guidance-note" id="recordIntakeNote">基礎代謝、生活消費、目標カロリー差から食事の目安を表示します。</p>
+            <p class="intake-guidance-note" id="recordIntakeNote">基礎代謝、生活消費、目標カロリー差から食事の上限目安を表示します。</p>
             <div class="meal-log-list compact" id="recordMealLogList"></div>
             <p class="empty-state" id="recordMealLogEmpty">まだ食事実績はありません。</p>
           </div>
@@ -281,7 +274,7 @@
             <h2 id="weeklySummaryTitle">週間の総合判定</h2>
             <p id="weeklyRange">----/--/-- - ----/--/--</p>
           </div>
-          <strong class="decision-stamp decision-fail" id="weeklyRank">不合格</strong>
+          <strong class="decision-stamp decision-fail" id="weeklyRank">✕</strong>
           <p id="weeklyComment">記録が増えると週間評価を表示します。</p>
           </div>
         </section>
@@ -290,29 +283,27 @@
       <section class="view" id="view-food" aria-labelledby="foodTitle">
         <div class="section-head">
           <h2 id="foodTitle">食事</h2>
-          <p>食材マスタ、バーコード、手入力で食事実績を登録します。</p>
+          <p>食品マスタから食事実績を登録します。</p>
         </div>
 
         <section class="section-block food-search-panel" aria-labelledby="foodSearchTitle">
           <div class="section-head inline-head">
             <div>
               <h2 id="foodSearchTitle">食品検索</h2>
-              <p>食品名、大分類、バーコード番号を同じ欄で検索できます。</p>
+              <p>食品名や大分類で検索できます。</p>
             </div>
             <button class="ghost-button compact-button" id="showMasterFoodEntry" type="button">食品登録 📝</button>
           </div>
           <form class="unified-food-search" id="unifiedFoodSearchForm">
             <div class="form-row">
               <label for="foodSearchInput">検索</label>
-              <input id="foodSearchInput" type="search" autocomplete="off" placeholder="例: レタス / 野菜 / 49698626">
+              <input id="foodSearchInput" type="search" autocomplete="off" placeholder="例: レタス / 野菜 / サラダ">
             </div>
             <div class="unified-search-actions">
-              <button class="ghost-button" id="scanBarcodeButton" type="button" aria-label="カメラでバーコードを読み取る">📷</button>
               <button class="primary-button" type="submit">検索</button>
             </div>
-            <input class="camera-file-input" id="barcodeImageInput" type="file" accept="image/*" capture="environment" hidden>
           </form>
-          <p class="barcode-status" id="foodSearchStatus" aria-live="polite">バーコードはカメラ撮影、または番号入力で検索できます。</p>
+          <p class="food-search-status" id="foodSearchStatus" aria-live="polite">食品名やカテゴリで検索できます。</p>
           <div class="food-result-list" id="foodSearchResults"></div>
           <div class="master-food-entry-panel" id="masterFoodEntryPanel"></div>
         </section>
@@ -354,24 +345,18 @@
           <p class="pfc-guidance-note" id="foodPfcNote">PFCバランスは食事登録後に表示します。</p>
           <div class="intake-guidance-grid">
             <article>
-              <span>下限目安</span>
-              <strong id="foodIntakeFloor">0 kcal</strong>
-            </article>
-            <article>
               <span>上限目安</span>
               <strong id="foodIntakeCeiling">0 kcal</strong>
             </article>
           </div>
           <div class="intake-gauge" id="foodIntakeGauge" aria-label="摂取kcalゲージ">
             <span class="intake-gauge-fill"></span>
-            <span class="intake-gauge-line lower" data-label="下限"></span>
             <span class="intake-gauge-line upper" data-label="上限"></span>
           </div>
           <div class="intake-gauge-legend" aria-label="摂取kcalゲージの凡例">
-            <span><i class="legend-dot lower"></i>下限</span>
             <span><i class="legend-dot upper"></i>上限</span>
           </div>
-          <p class="intake-guidance-note" id="foodIntakeNote">基礎代謝、生活消費、目標カロリー差から食事の目安を表示します。</p>
+          <p class="intake-guidance-note" id="foodIntakeNote">基礎代謝、生活消費、目標カロリー差から食事の上限目安を表示します。</p>
           <div class="pending-food-result" id="pendingFoodResult"></div>
           <section class="today-meal-log-panel" aria-labelledby="foodMealLogTitle">
             <div class="today-meal-log-head">
@@ -504,7 +489,7 @@
             <div class="timer-settings-head">
               <div>
                 <h2 id="timerSettingsTitle">ラウンド設定</h2>
-                <p id="timerSummary">準備10秒 / ワーク3分 / 休憩1分 / 3R</p>
+                <p id="timerSummary">準備30秒 / ワーク3分 / 休憩20秒 / 6R</p>
               </div>
               <button class="timer-close-button" id="closeTimerSettings" type="button" aria-label="編集画面を閉じる">×</button>
             </div>
@@ -514,44 +499,58 @@
                   <label for="timerPreset">保存済み設定</label>
                   <select id="timerPreset"></select>
                 </div>
-                <button class="ghost-button" id="applyTimerPreset" type="button">反映</button>
-                <button class="ghost-button" id="deleteTimerPreset" type="button">削除</button>
               </div>
               <div class="timer-setting-grid">
                 <div class="form-row">
-                  <label for="timerPrepSec">準備</label>
-                  <div class="input-unit">
-                    <input id="timerPrepSec" type="number" min="0" max="600" step="1" inputmode="numeric" data-timer-setting="prepSec">
-                    <span>秒</span>
+                  <label>準備</label>
+                  <div class="timer-wheel" data-timer-wheel="prepSec">
+                    <button type="button" data-timer-wheel-step="-1" aria-label="準備を減らす">‹</button>
+                    <div class="timer-wheel-window" tabindex="0" role="spinbutton" aria-label="準備秒">
+                      <strong id="timerPrepSec">30</strong><span>秒</span>
+                    </div>
+                    <button type="button" data-timer-wheel-step="1" aria-label="準備を増やす">›</button>
                   </div>
                 </div>
                 <div class="form-row">
-                  <label for="timerWorkSec">ワーク</label>
-                  <div class="input-unit">
-                    <input id="timerWorkSec" type="number" min="0.5" max="60" step="0.5" inputmode="decimal" data-timer-setting-min="workSec">
-                    <span>分</span>
+                  <label>ワーク</label>
+                  <div class="timer-dual-wheel">
+                    <div class="timer-wheel" data-timer-wheel="workMin">
+                      <button type="button" data-timer-wheel-step="-1" aria-label="ワーク分を減らす">‹</button>
+                      <div class="timer-wheel-window" tabindex="0" role="spinbutton" aria-label="ワーク分">
+                        <strong id="timerWorkMin">3</strong><span>分</span>
+                      </div>
+                      <button type="button" data-timer-wheel-step="1" aria-label="ワーク分を増やす">›</button>
+                    </div>
+                    <div class="timer-wheel" data-timer-wheel="workSec">
+                      <button type="button" data-timer-wheel-step="-1" aria-label="ワーク秒を減らす">‹</button>
+                      <div class="timer-wheel-window" tabindex="0" role="spinbutton" aria-label="ワーク秒">
+                        <strong id="timerWorkSec">00</strong><span>秒</span>
+                      </div>
+                      <button type="button" data-timer-wheel-step="1" aria-label="ワーク秒を増やす">›</button>
+                    </div>
                   </div>
                 </div>
                 <div class="form-row">
-                  <label for="timerRestSec">休憩</label>
-                  <div class="input-unit">
-                    <input id="timerRestSec" type="number" min="0" max="1800" step="1" inputmode="numeric" data-timer-setting="restSec">
-                    <span>秒</span>
+                  <label>休憩</label>
+                  <div class="timer-wheel" data-timer-wheel="restSec">
+                    <button type="button" data-timer-wheel-step="-1" aria-label="休憩を減らす">‹</button>
+                    <div class="timer-wheel-window" tabindex="0" role="spinbutton" aria-label="休憩秒">
+                      <strong id="timerRestSec">20</strong><span>秒</span>
+                    </div>
+                    <button type="button" data-timer-wheel-step="1" aria-label="休憩を増やす">›</button>
                   </div>
                 </div>
                 <div class="form-row">
-                  <label for="timerRounds">ラウンド</label>
-                  <div class="input-unit">
-                    <input id="timerRounds" type="number" min="1" max="99" step="1" inputmode="numeric" data-timer-setting="rounds">
-                    <span>R</span>
+                  <label>ラウンド</label>
+                  <div class="timer-wheel" data-timer-wheel="rounds">
+                    <button type="button" data-timer-wheel-step="-1" aria-label="ラウンドを減らす">‹</button>
+                    <div class="timer-wheel-window" tabindex="0" role="spinbutton" aria-label="ラウンド">
+                      <strong id="timerRounds">6</strong><span>R</span>
+                    </div>
+                    <button type="button" data-timer-wheel-step="1" aria-label="ラウンドを増やす">›</button>
                   </div>
                 </div>
               </div>
-              <div class="form-row">
-                <label for="timerPresetName">設定名</label>
-                <input id="timerPresetName" type="text" maxlength="32" placeholder="例: 追い込み 90秒×5R">
-              </div>
-              <button class="primary-button" id="saveTimerPreset" type="button">現在の設定を保存</button>
               <p class="timer-feedback" id="timerFeedback" aria-live="polite"></p>
             </div>
           </section>
@@ -657,6 +656,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=104"></script>
+  <script src="./app.js?v=109"></script>
 </body>
 </html>
