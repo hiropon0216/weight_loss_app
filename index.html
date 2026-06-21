@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111426">
   <title>体重コーチ</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=109">
+  <link rel="stylesheet" href="./styles.css?v=110">
 </head>
 <body>
   <div id="app">
@@ -109,52 +109,28 @@
           </div>
         </section>
 
-        <section class="section-block record-panel record-panel-food nutrition-summary collapsible-section is-collapsed" aria-labelledby="recordNutritionTitle">
+        <section class="section-block record-panel record-panel-food meal-check-panel collapsible-section is-collapsed" aria-labelledby="recordMealCheckTitle">
           <div class="section-head inline-head">
             <div>
-              <h2 id="recordNutritionTitle">食事実績</h2>
-              <p>今日食べたものの摂取量を合計します。</p>
+              <h2 id="recordMealCheckTitle">食事チェック</h2>
+              <p>食べた量を計算せず、減量を崩しにくい行動だけを確認します。</p>
             </div>
             <div class="section-head-actions">
-              <button class="collapse-toggle" type="button" data-collapse-toggle="recordFoodCollapse" aria-label="食事実績を開く" aria-expanded="false">⌄</button>
+              <button class="collapse-toggle" type="button" data-collapse-toggle="recordFoodCollapse" aria-label="食事チェックを開く" aria-expanded="false">⌄</button>
             </div>
           </div>
           <div class="collapsible-body" id="recordFoodCollapse" hidden>
-            <div class="intake-total-card">
-              <span>今日の摂取</span>
-              <strong id="recordNutritionKcal">0 kcal</strong>
+            <div class="meal-check-score-card">
+              <div>
+                <span id="mealCheckMode">平日チェック</span>
+                <strong id="mealCheckScore">0点</strong>
+              </div>
+              <p id="mealCheckComment">チェックを入れると食事側の減量アプローチを判定します。</p>
             </div>
-            <div class="nutrition-macro-grid">
-              <article id="recordProteinCard">
-                <span>P（たんぱく質）</span>
-                <strong id="recordNutritionProtein">0.0g</strong>
-              </article>
-              <article id="recordFatCard">
-                <span>F（脂質）</span>
-                <strong id="recordNutritionFat">0.0g</strong>
-              </article>
-              <article id="recordCarbsCard">
-                <span>C（炭水化物）</span>
-                <strong id="recordNutritionCarbs">0.0g</strong>
-              </article>
+            <div class="meal-check-window" id="mealCheckWindow">
+              平日: 12:00以降に食事開始、20:00までに最後の食事・飲み物を終える設計です。
             </div>
-            <p class="pfc-guidance-note" id="recordPfcNote">PFCバランスは食事登録後に表示します。</p>
-            <div class="intake-guidance-grid">
-              <article>
-                <span>上限目安</span>
-                <strong id="recordIntakeCeiling">0 kcal</strong>
-              </article>
-            </div>
-            <div class="intake-gauge" id="recordIntakeGauge" aria-label="摂取kcalゲージ">
-              <span class="intake-gauge-fill"></span>
-              <span class="intake-gauge-line upper" data-label="上限"></span>
-            </div>
-            <div class="intake-gauge-legend" aria-label="摂取kcalゲージの凡例">
-              <span><i class="legend-dot upper"></i>上限</span>
-            </div>
-            <p class="intake-guidance-note" id="recordIntakeNote">基礎代謝、生活消費、目標カロリー差から食事の上限目安を表示します。</p>
-            <div class="meal-log-list compact" id="recordMealLogList"></div>
-            <p class="empty-state" id="recordMealLogEmpty">まだ食事実績はありません。</p>
+            <div id="mealCheckGroups"></div>
           </div>
         </section>
 
@@ -179,7 +155,7 @@
           <div class="section-head inline-head">
             <div>
               <h2 id="burnSummaryTitle">燃焼サマリ</h2>
-              <p>食事と運動から今日のカロリー収支を確認します。</p>
+              <p>食事チェックの点数から、今日の食事側の締まり具合を確認します。</p>
             </div>
           </div>
           <div class="burn-summary-body">
@@ -233,7 +209,7 @@
                   </g>
                 </svg>
               </div>
-              <p id="fatBurnText">食事実績を登録すると、今日のカロリー収支を表示します。</p>
+              <p id="fatBurnText">食事チェックを入れると、今日の食事側の判定を表示します。</p>
             </div>
           </div>
         </section>
@@ -277,95 +253,6 @@
           <strong class="decision-stamp decision-fail" id="weeklyRank">✕</strong>
           <p id="weeklyComment">記録が増えると週間評価を表示します。</p>
           </div>
-        </section>
-      </section>
-
-      <section class="view" id="view-food" aria-labelledby="foodTitle">
-        <div class="section-head">
-          <h2 id="foodTitle">食事</h2>
-          <p>食品マスタから食事実績を登録します。</p>
-        </div>
-
-        <section class="section-block food-search-panel" aria-labelledby="foodSearchTitle">
-          <div class="section-head inline-head">
-            <div>
-              <h2 id="foodSearchTitle">食品検索</h2>
-              <p>食品名や大分類で検索できます。</p>
-            </div>
-            <button class="ghost-button compact-button" id="showMasterFoodEntry" type="button">食品登録 📝</button>
-          </div>
-          <form class="unified-food-search" id="unifiedFoodSearchForm">
-            <div class="form-row">
-              <label for="foodSearchInput">検索</label>
-              <input id="foodSearchInput" type="search" autocomplete="off" placeholder="例: レタス / 野菜 / サラダ">
-            </div>
-            <div class="unified-search-actions">
-              <button class="primary-button" type="submit">検索</button>
-            </div>
-          </form>
-          <p class="food-search-status" id="foodSearchStatus" aria-live="polite">食品名やカテゴリで検索できます。</p>
-          <div class="food-result-list" id="foodSearchResults"></div>
-          <div class="master-food-entry-panel" id="masterFoodEntryPanel"></div>
-        </section>
-
-        <section class="section-block nutrition-summary" aria-labelledby="foodTodayTitle">
-          <div class="section-head inline-head">
-            <div>
-              <h2 id="foodTodayTitle">食事実績</h2>
-              <p id="foodTodayDate">----/--/--</p>
-            </div>
-            <button class="ghost-button history-toggle-button" id="toggleMealHistoryButton" type="button" aria-label="履歴を参照" aria-expanded="false">⌚</button>
-          </div>
-          <div class="meal-history-panel" id="foodMealHistoryPanel" hidden>
-            <div class="section-head compact-section-head">
-              <h3>履歴から再登録</h3>
-              <p>直近10件から、同じ内容をすぐに登録できます。</p>
-            </div>
-            <div class="meal-history-list" id="foodMealHistoryList"></div>
-            <p class="empty-state" id="foodMealHistoryEmpty">まだ履歴がありません。</p>
-          </div>
-          <div class="intake-total-card">
-            <span>摂取kcal</span>
-            <strong id="foodTodayKcal">0 kcal</strong>
-          </div>
-          <div class="nutrition-macro-grid">
-            <article id="foodProteinCard">
-              <span>P（たんぱく質）</span>
-              <strong id="foodTodayProtein">0.0g</strong>
-            </article>
-            <article id="foodFatCard">
-              <span>F（脂質）</span>
-              <strong id="foodTodayFat">0.0g</strong>
-            </article>
-            <article id="foodCarbsCard">
-              <span>C（炭水化物）</span>
-              <strong id="foodTodayCarbs">0.0g</strong>
-            </article>
-          </div>
-          <p class="pfc-guidance-note" id="foodPfcNote">PFCバランスは食事登録後に表示します。</p>
-          <div class="intake-guidance-grid">
-            <article>
-              <span>上限目安</span>
-              <strong id="foodIntakeCeiling">0 kcal</strong>
-            </article>
-          </div>
-          <div class="intake-gauge" id="foodIntakeGauge" aria-label="摂取kcalゲージ">
-            <span class="intake-gauge-fill"></span>
-            <span class="intake-gauge-line upper" data-label="上限"></span>
-          </div>
-          <div class="intake-gauge-legend" aria-label="摂取kcalゲージの凡例">
-            <span><i class="legend-dot upper"></i>上限</span>
-          </div>
-          <p class="intake-guidance-note" id="foodIntakeNote">基礎代謝、生活消費、目標カロリー差から食事の上限目安を表示します。</p>
-          <div class="pending-food-result" id="pendingFoodResult"></div>
-          <section class="today-meal-log-panel" aria-labelledby="foodMealLogTitle">
-            <div class="today-meal-log-head">
-              <h3 id="foodMealLogTitle">今日摂取したもの</h3>
-              <span id="foodMealLogCount">0件</span>
-            </div>
-            <div class="meal-log-list compact-meal-list" id="foodMealLogList"></div>
-            <p class="empty-state" id="foodMealLogEmpty">今日の食事はまだ登録されていません。</p>
-          </section>
         </section>
       </section>
 
@@ -613,12 +500,12 @@
 
           <div class="metric-grid">
             <article class="metric-card">
-              <span>基礎代謝</span>
-              <strong id="bmrValue">-- kcal</strong>
+              <span>現在ペース</span>
+              <strong id="settingsCurrentPace">-- kg/週</strong>
             </article>
             <article class="metric-card">
-              <span>目標カロリー差/日</span>
-              <strong id="requiredDeficitValue">-- kcal</strong>
+              <span>必要ペース</span>
+              <strong id="settingsRequiredPace">-- kg/週</strong>
             </article>
             <article class="metric-card">
               <span>BMI25相当</span>
@@ -639,7 +526,6 @@
 
     <nav class="tabbar" aria-label="メインナビゲーション">
       <button class="tab active" data-view="today" type="button">記録</button>
-      <button class="tab" data-view="food" type="button">食事</button>
       <button class="tab" data-view="exercise" type="button">運動</button>
       <button class="tab" data-view="timer" type="button">タイマー</button>
       <button class="tab" data-view="trend" type="button">推移</button>
@@ -656,6 +542,6 @@
       <button class="primary-button" id="closeResult" type="button">OK</button>
     </div>
   </div>
-  <script src="./app.js?v=109"></script>
+  <script src="./app.js?v=110"></script>
 </body>
 </html>

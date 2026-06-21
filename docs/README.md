@@ -1,6 +1,6 @@
 # docs
 
-Last updated: 2026-06-08
+Last updated: 2026-06-21
 
 このディレクトリは、減量アプリの設計判断と機能開発用ドキュメントを置く場所です。
 
@@ -10,8 +10,6 @@ Last updated: 2026-06-08
 | --- | --- |
 | [product_brief.md](product_brief.md) | アプリ全体のコンセプト、ターゲット、成功指標を固定する |
 | [mvp_weight_management.md](mvp_weight_management.md) | MVPである体重管理機能の詳細設計を管理する |
-| [nutrition_management_redesign.md](nutrition_management_redesign.md) | 食材DB、バーコード、手入力、履歴、お気に入りを含む食事管理の再設計を管理する |
-| [food_master_refresh.md](food_master_refresh.md) | 文科省食材マスタと加工食品マスタの更新方針、一次情報ポリシー、GitHub Actions運用を管理する |
 | [decision_log.md](decision_log.md) | 設計上の決定事項と理由を時系列で残す |
 
 ## 今後追加するとよいドキュメント
