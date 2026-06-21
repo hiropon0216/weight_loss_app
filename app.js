@@ -562,7 +562,9 @@ function renderCalendar() {
       recorded.has(iso) ? "has-weight" : "",
     ].filter(Boolean).join(" ");
     const decision = scored.get(iso);
-    const badge = decision ? `<span class="score-badge ${decisionClass(decision.status)}">${escapeHtml(decision.short)}</span>` : "";
+    const badge = decision
+      ? `<span class="calendar-decision ${decisionClass(decision.status)}">${decision.status === "pass" ? "〇" : "×"}</span>`
+      : "";
     return `<button class="${classes}" type="button" data-date="${iso}" aria-label="${iso}">${day.getDate()}${badge}</button>`;
   }).join("");
 }
@@ -703,6 +705,93 @@ function mealCheckItemMarkup(item, checked) {
     </label>
   `;
 }
+
+function currentRoundTimer() {
+  return normalizeRoundTimer(state.roundTimer);
+}
+
+function buildRoundTimerStages(settings = currentRoundTimer()) {
+  const stages = [];
+  if (settings.prepSec > 0) stages.push({ phase: "prep", round: 1, durationSec: settings.prepSec });
+  for (let round = 1; round <= settings.rounds; round += 1) {
+    stages.push({ phase: "work", round, durationSec: settings.workSec });
+    if (round < settings.rounds && settings.restSec > 0) {
+      stages.push({ phase: "rest", round, durationSec: settings.restSec });
+    }
+  }
+  return stages.length ? stages : [{ phase: "work", round: 1, durationSec: settings.workSec }];
+}
+
+function ensureRoundTimerRuntime() {
+  if (roundTimerRuntime.stages.length) return;
+  roundTimerRuntime.stages = buildRoundTimerStages();
+  roundTimerRuntime.stageIndex = 0;
+  roundTimerRuntime.remainingMs = null;
+  roundTimerRuntime.phaseEndsAt = null;
+  roundTimerRuntime.lastCountdownSecond = null;
+  roundTimerRuntime.tenSecondPlayed = false;
+}
+
+function currentRoundTimerStage() {
+  ensureRoundTimerRuntime();
+  return roundTimerRuntime.stages[roundTimerRuntime.stageIndex] || roundTimerRuntime.stages[0];
+}
+
+function resetRoundTimer(withRender = true) {
+  stopRoundTimerTick();
+  roundTimerRuntime = {
+    status: "idle",
+    stageIndex: 0,
+    stages: buildRoundTimerStages(),
+    remainingMs: null,
+    phaseEndsAt: null,
+    tickId: null,
+    lastCountdownSecond: null,
+    tenSecondPlayed: false,
+  };
+  timerLastPhase = null;
+  syncWakeLock();
+  if (withRender) renderRoundTimer();
+}
+
+function roundTimerTotalSeconds(settings = currentRoundTimer()) {
+  return buildRoundTimerStages(settings).reduce((sum, stage) => sum + stage.durationSec, 0);
+}
+
+function formatTimerDuration(seconds) {
+  const total = Math.max(0, Math.round(Number(seconds) || 0));
+  const minutes = Math.floor(total / 60);
+  const secs = total % 60;
+  if (!minutes) return `${secs}秒`;
+  if (!secs) return `${minutes}分`;
+  return `${minutes}分${secs}秒`;
+}
+
+function formatTimerClock(seconds) {
+  const total = Math.max(0, Math.ceil(Number(seconds) || 0));
+  const minutes = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
+function timerPhaseLabel(phase) {
+  return {
+    prep: "準備",
+    work: "ワーク",
+    rest: "休憩",
+    complete: "完了",
+  }[phase] || "待機";
+}
+
+function timerStatusLabel(status) {
+  return {
+    idle: "待機中",
+    running: "実行中",
+    paused: "一時停止",
+    complete: "完了",
+  }[status] || "待機中";
+}
+
 function renderRoundTimer() {
   const display = document.querySelector("#roundTimerDisplay");
   if (!display) return;
@@ -1466,7 +1555,7 @@ function mealCheckScore(check, date) {
 
 function mealCheckDecision(score, hasData = score > 0) {
   if (!hasData) {
-    return { status: "fail", label: "✕", short: "✕", reason: "まだ食事チェックがありません。今日の食べ方だけを1タップで確認します。", score };
+    return { status: "fail", label: "×", short: "×", reason: "まだ食事チェックがありません。今日の食べ方だけを1タップで確認します。", score };
   }
   if (score >= 90) {
     return { status: "pass", label: "〇", short: "〇", reason: "強い減量日です。食事側の崩れをかなり抑えられています。", score };
@@ -1480,7 +1569,7 @@ function mealCheckDecision(score, hasData = score > 0) {
   if (score >= 50) {
     return { status: "warn", label: "△", short: "△", reason: "弱めの日です。記録はできていますが、減量への寄与は薄めです。", score };
   }
-  return { status: "fail", label: "✕", short: "✕", reason: "食事側は崩れの日です。次の食事から1項目だけ戻せば十分です。", score };
+  return { status: "fail", label: "×", short: "×", reason: "食事側は崩れの日です。次の食事から1項目だけ戻せば十分です。", score };
 }
 
 function decisionClass(status) {
@@ -1494,7 +1583,7 @@ function dailyDecision(date) {
 
 function weeklyDecisionSummary(results, recordedDays) {
   if (!recordedDays) {
-    return { status: "fail", label: "✕", short: "✕", reason: "まだ評価対象の記録がありません。" };
+    return { status: "fail", label: "×", short: "×", reason: "まだ評価対象の記録がありません。" };
   }
   const scored = results.filter((entry) => entry.score > 0);
   if (scored.length < 4) {
@@ -1507,7 +1596,7 @@ function weeklyDecisionSummary(results, recordedDays) {
   if (averageScore >= 65) {
     return { status: "warn", label: "△", short: "△", reason: `平均${averageScore}点です。維持〜微減ラインなので、夜の追加摂取か主食量を1つ絞りましょう。` };
   }
-  return { status: "fail", label: "✕", short: "✕", reason: `平均${averageScore}点です。食事側の崩れが体重トレンドに出やすい状態です。` };
+  return { status: "fail", label: "×", short: "×", reason: `平均${averageScore}点です。食事側の崩れが体重トレンドに出やすい状態です。` };
 }
 
 function setDecisionStamp(element, decision) {
